@@ -774,6 +774,59 @@ class Database:
         cur = self.execute("DELETE FROM http_cache WHERE fetched_at < ?", (cutoff,))
         return cur.rowcount or 0
 
+    # -- read helpers used by scoring and reporting ------------------------
+
+    def repos_for_run(self, run_id: int, *, scanned_only: bool = True) -> list[sqlite3.Row]:
+        sql = """
+            SELECT r.*, s.contributor_count, s.collaborator_count, s.total_commits,
+                   s.unattributed_commits, s.open_advisories, s.window_start
+              FROM repos r
+              LEFT JOIN repo_stats s ON s.repo_id = r.repo_id
+             WHERE r.run_id = ?
+        """
+        if scanned_only:
+            sql += " AND r.scan_status = 'scanned'"
+        sql += " ORDER BY r.full_name"
+        return self.query(sql, (run_id,))
+
+    def members_for_repo(self, repo_id: int) -> list[sqlite3.Row]:
+        """Everyone with access to a repo, or activity on it, or both.
+
+        A FULL OUTER JOIN in SQLite terms: collaborators with no contributions
+        are the people the review exists to find, and contributors who no
+        longer hold access still belong in the per-repo table as context.
+        """
+        return self.query(
+            """
+            SELECT
+                COALESCE(c.login, k.login)      AS login,
+                c.user_type, c.is_direct, c.is_outside, c.is_team,
+                c.permission_direct, c.permission_outside, c.permission_team,
+                c.team_names, c.effective_permission,
+                COALESCE(k.commits, 0)          AS commits,
+                COALESCE(k.prs_opened, 0)       AS prs_opened,
+                COALESCE(k.prs_merged, 0)       AS prs_merged,
+                COALESCE(k.reviews, 0)          AS reviews,
+                k.last_commit_at, k.last_pr_at, k.last_review_at,
+                k.last_activity_at, k.last_commit_ever
+              FROM collaborators c
+              LEFT JOIN contributions k
+                     ON k.repo_id = c.repo_id AND k.login = c.login
+             WHERE c.repo_id = ?
+            UNION
+            SELECT
+                k.login, NULL, 0, 0, 0, NULL, NULL, NULL, NULL, NULL,
+                k.commits, k.prs_opened, k.prs_merged, k.reviews,
+                k.last_commit_at, k.last_pr_at, k.last_review_at,
+                k.last_activity_at, k.last_commit_ever
+              FROM contributions k
+             WHERE k.repo_id = ?
+               AND k.login NOT IN (SELECT login FROM collaborators WHERE repo_id = ?)
+             ORDER BY login
+            """,
+            (repo_id, repo_id, repo_id),
+        )
+
     # -- counts used by the run summary / --json ---------------------------
 
     def count(self, table: str, where: str = "", params: Sequence[Any] = ()) -> int:

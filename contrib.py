@@ -677,6 +677,42 @@ def _iso(value: datetime | None) -> str | None:
     return value.astimezone(timezone.utc).isoformat(timespec="seconds") if value else None
 
 
+def fetch_last_commit_ever(
+    gh: GitHubClient, full_name: str, login: str
+) -> datetime | None:
+    """The member's most recent commit on this repo, of any age.
+
+    The GraphQL history is deliberately window-scoped, which means it cannot
+    answer "when did this person last commit?" for someone whose last commit
+    predates the window - and that is precisely the person a reviewer needs a
+    date for before revoking anything. One cheap REST call (`per_page=1`)
+    fills that in.
+
+    Called only for flagged members, so the cost is bounded by the size of the
+    suggestion list, not by the size of the org. Returns None when the member
+    has never committed here, or when the repo is empty (409).
+    """
+    try:
+        result = gh.get(
+            f"/repos/{full_name}/commits",
+            {"author": login, "per_page": 1},
+            allow_404=True,
+            allow_403=True,
+        )
+    except EmptyRepositoryError:
+        return None
+    except GitHubError as exc:
+        log.debug("Could not read last commit for %s on %s: %s", login, full_name, exc)
+        return None
+
+    commits = result.data or []
+    if not isinstance(commits, list) or not commits:
+        return None
+    commit = (commits[0] or {}).get("commit") or {}
+    author = commit.get("author") or {}
+    return parse_ts(author.get("date"))
+
+
 # --------------------------------------------------------------------------
 # Orchestration for one repo
 # --------------------------------------------------------------------------
