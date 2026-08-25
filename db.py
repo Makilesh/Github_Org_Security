@@ -203,6 +203,11 @@ CREATE TABLE IF NOT EXISTS contributions (
     last_pr_at      TEXT,
     last_review_at  TEXT,
     last_activity_at TEXT,
+    -- Most recent commit of any age, looked up only for flagged members. The
+    -- window-scoped columns above cannot answer "when did they last commit?"
+    -- for someone whose last commit predates the window - which is exactly the
+    -- person a reviewer needs a date for.
+    last_commit_ever TEXT,
     updated_at      TEXT    NOT NULL,
     PRIMARY KEY (repo_id, login)
 );
@@ -682,6 +687,13 @@ class Database:
             """,
             (repo_id, login, run_id, commits, prs_opened, prs_merged, reviews,
              last_commit_at, last_pr_at, last_review_at, last_activity_at, utcnow()),
+        )
+
+    def set_last_commit_ever(self, repo_id: int, login: str, when: str | None) -> None:
+        """Backfill the all-time last commit date for one member on one repo."""
+        self.execute(
+            "UPDATE contributions SET last_commit_ever = ? WHERE repo_id = ? AND login = ?",
+            (when, repo_id, login),
         )
 
     def upsert_score(
