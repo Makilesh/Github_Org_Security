@@ -302,6 +302,14 @@ USE_ETAG_CACHE: bool = _bool("USE_ETAG_CACHE", True)
 #: indefinitely stale data out of a 304.
 CACHE_TTL_HOURS: int = _int("CACHE_TTL_HOURS", 24 * 7)
 
+#: Resolve *which* team grants team-inherited access, by indexing the org's
+#: teams once per run and intersecting with each repo's team list. Costs
+#: 1 + (number of teams) requests for the whole org, plus one per repo, and in
+#: exchange a suggestion can say "via the platform-eng team" instead of just
+#: "inherited". Degrades to a set-difference estimate if the token cannot read
+#: teams.
+RESOLVE_TEAMS: bool = _bool("RESOLVE_TEAMS", True)
+
 #: Try the org-wide Dependabot endpoint first (one paginated call for the whole
 #: org); fall back to per-repo when the token or plan does not allow it.
 ORG_DEPENDABOT_FIRST: bool = _bool("ORG_DEPENDABOT_FIRST", True)

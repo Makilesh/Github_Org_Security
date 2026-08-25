@@ -181,6 +181,7 @@ CREATE TABLE IF NOT EXISTS collaborators (
     permission_direct       TEXT,
     permission_outside      TEXT,
     permission_team         TEXT,
+    team_names              TEXT,           -- comma separated; which teams grant it
     effective_permission    TEXT,
     role_name               TEXT,
     site_admin              INTEGER NOT NULL DEFAULT 0,
@@ -600,6 +601,7 @@ class Database:
         user_type: str | None = None,
         role_name: str | None = None,
         site_admin: bool = False,
+        team_names: str | None = None,
     ) -> None:
         """Record one access path for one member.
 
@@ -620,20 +622,22 @@ class Database:
         self.execute(
             f"""
             INSERT INTO collaborators(repo_id, login, run_id, user_id, user_type,
-                                      {flag_col}, {perm_col}, role_name, site_admin, updated_at)
-            VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
+                                      {flag_col}, {perm_col}, team_names, role_name,
+                                      site_admin, updated_at)
+            VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)
             ON CONFLICT(repo_id, login) DO UPDATE SET
                 run_id = excluded.run_id,
                 user_id = COALESCE(excluded.user_id, collaborators.user_id),
                 user_type = COALESCE(excluded.user_type, collaborators.user_type),
                 {flag_col} = 1,
                 {perm_col} = excluded.{perm_col},
+                team_names = COALESCE(excluded.team_names, collaborators.team_names),
                 role_name = COALESCE(excluded.role_name, collaborators.role_name),
                 site_admin = excluded.site_admin,
                 updated_at = excluded.updated_at
             """,
-            (repo_id, login, run_id, user_id, user_type, permission, role_name,
-             int(site_admin), utcnow()),
+            (repo_id, login, run_id, user_id, user_type, permission, team_names,
+             role_name, int(site_admin), utcnow()),
         )
 
     def set_effective_permission(self, repo_id: int, login: str, permission: str | None) -> None:
