@@ -252,7 +252,7 @@ class GitHubClient:
         The envelope is `{"data": ..., "link": ...}`; keeping the Link header
         with the body is what lets a 304 on one page still find the next one.
         """
-        if not (self.use_cache and self.cache):
+        if not self.use_cache or self.cache is None:
             return None
         row = self.cache.get_cached(key)
         if not row:
@@ -268,7 +268,10 @@ class GitHubClient:
         return etag, last_modified, envelope
 
     def _cache_store(self, key: str, response: httpx.Response, data: Any) -> None:
-        if not (self.use_cache and self.cache):
+        # `is None`, not truthiness: a cache backend that is empty (or defines
+        # __len__) is still a usable cache, and testing it for truth would
+        # silently disable caching for the whole run.
+        if not self.use_cache or self.cache is None:
             return
         etag = response.headers.get("etag")
         last_modified = response.headers.get("last-modified")

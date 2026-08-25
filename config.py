@@ -208,9 +208,11 @@ class ScoringConfig:
     #: "write" so an unknown role is never quietly treated as harmless.
     default_permission_weight: float = 1.5
 
-    #: Members with no activity at all still need a days-since number. We use
-    #: the width of the scan window rather than infinity, so the decay stays
-    #: finite and the ordering stays meaningful.
+    #: A member with no activity at all scores 0 whatever the decay does, so
+    #: this does not affect the score. It is the "days since last activity"
+    #: shown as evidence on the dashboard: the width of the scan window, which
+    #: is the honest statement ("nothing in the last N days") rather than a
+    #: fabricated date we never observed.
     no_activity_days: float = float(LOOKBACK_DAYS)
 
     def weight_for(self, permission: str | None) -> float:
