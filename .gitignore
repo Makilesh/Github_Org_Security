@@ -1,3 +1,54 @@
-/.venv
-
+# --- Secrets -----------------------------------------------------------
+# The PAT lives here. Never commit it.
 .env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Virtual environments ----------------------------------------------
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# --- Scanner output ----------------------------------------------------
+# Scan results contain internal repo names, member logins and advisory
+# details. Regenerate them; do not check them in.
+data/
+out/
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+*.db
+
+# --- Python ------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# --- Test / tooling ----------------------------------------------------
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# --- Editors and OS ----------------------------------------------------
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
