@@ -1,0 +1,298 @@
+{
+  "_comment": [
+    "Synthetic organization used by the pytest suite and by `python main.py --demo`.",
+    "MOCKED ON PURPOSE: the task brief allows mocking any part of the API that is",
+    "impractical to reach, and private Dependabot advisories are exactly that - they",
+    "require an org with paid security features and real vulnerable dependencies.",
+    "Every field below matches the shape of the real API response the scanner parses,",
+    "so the same code path runs against fixtures and against api.github.com.",
+    "`as_of` pins the clock, which makes demo output byte-for-byte reproducible: the",
+    "same command run next month still prints the same scores."
+  ],
+  "org": "acme-demo",
+  "as_of": "2026-08-25T12:00:00Z",
+  "lookback_days": 180,
+  "owners": ["ravi-owner"],
+  "allowlist": ["audit-svc"],
+  "teams": {
+    "platform-eng": {
+      "name": "Platform Engineering",
+      "members": ["maya-platform", "alex-departed", "ravi-owner"]
+    },
+    "frontend-guild": {
+      "name": "Frontend Guild",
+      "members": ["priya-staff", "lena-active"]
+    },
+    "data-eng": {
+      "name": "Data Engineering",
+      "members": ["maya-platform", "sam-stale"]
+    }
+  },
+  "people": {
+    "ravi-owner":      {"id": 9001, "type": "User"},
+    "lena-active":     {"id": 9002, "type": "User"},
+    "priya-staff":     {"id": 9003, "type": "User"},
+    "alex-departed":   {"id": 9004, "type": "User"},
+    "sam-stale":       {"id": 9005, "type": "User"},
+    "tom-triage":      {"id": 9006, "type": "User"},
+    "maya-platform":   {"id": 9007, "type": "User"},
+    "dev-vendor":      {"id": 9008, "type": "User"},
+    "kai-solo":        {"id": 9009, "type": "User"},
+    "noor-new":        {"id": 9010, "type": "User"},
+    "audit-svc":       {"id": 9011, "type": "User"},
+    "dependabot[bot]": {"id": 9012, "type": "Bot"},
+    "release-bot":     {"id": 9013, "type": "Bot"}
+  },
+
+  "repos": [
+    {
+      "id": 101,
+      "name": "payments-api",
+      "full_name": "acme-demo/payments-api",
+      "html_url": "https://github.com/acme-demo/payments-api",
+      "private": true,
+      "visibility": "private",
+      "archived": false,
+      "fork": false,
+      "default_branch": "main",
+      "created_at": "2021-03-04T09:12:00Z",
+      "pushed_at": "2026-08-24T16:41:00Z",
+      "unattributed_commits": 7,
+      "collaborators": [
+        {"login": "ravi-owner",      "affiliation": "direct",  "permission": "admin"},
+        {"login": "lena-active",     "affiliation": "direct",  "permission": "write"},
+        {"login": "priya-staff",     "affiliation": "direct",  "permission": "maintain"},
+        {"login": "alex-departed",   "affiliation": "direct",  "permission": "admin"},
+        {"login": "sam-stale",       "affiliation": "direct",  "permission": "write"},
+        {"login": "tom-triage",      "affiliation": "direct",  "permission": "triage"},
+        {"login": "audit-svc",       "affiliation": "direct",  "permission": "read"},
+        {"login": "dependabot[bot]", "affiliation": "direct",  "permission": "write"},
+        {"login": "dev-vendor",      "affiliation": "outside", "permission": "write"},
+        {"login": "maya-platform",   "affiliation": "team",    "permission": "write",
+         "teams": ["platform-eng"]}
+      ],
+      "activity": {
+        "lena-active":     {"commits": 62, "reviews": 9, "prs_merged": 14, "prs_opened": 15,
+                            "last_commit_at": "2026-08-24T16:41:00Z",
+                            "last_review_at": "2026-08-22T11:03:00Z"},
+        "priya-staff":     {"commits": 2, "reviews": 21, "prs_merged": 1, "prs_opened": 2,
+                            "last_commit_at": "2026-07-09T13:20:00Z",
+                            "last_review_at": "2026-08-20T09:55:00Z"},
+        "ravi-owner":      {"commits": 1, "reviews": 2, "prs_merged": 0, "prs_opened": 0,
+                            "last_commit_at": "2026-06-10T08:15:00Z",
+                            "last_review_at": "2026-06-11T10:02:00Z"},
+        "dependabot[bot]": {"commits": 24, "reviews": 0, "prs_merged": 22, "prs_opened": 24,
+                            "last_commit_at": "2026-08-23T02:11:00Z"},
+        "dev-vendor":      {"commits": 3, "reviews": 0, "prs_merged": 1, "prs_opened": 1,
+                            "last_commit_at": "2026-03-05T14:47:00Z"}
+      },
+      "last_commit_ever": {
+        "alex-departed": "2025-04-17T10:33:00Z",
+        "sam-stale": "2025-11-14T15:08:00Z",
+        "maya-platform": "2025-08-30T09:41:00Z",
+        "tom-triage": null,
+        "audit-svc": null
+      },
+      "advisories": [
+        {"ghsa_id": "GHSA-7q4j-hf2p-1x2m", "severity": "critical", "state": "open",
+         "package": "django", "ecosystem": "pip", "manifest_path": "requirements.txt",
+         "summary": "Django SQL injection via crafted QuerySet lookups",
+         "cve_id": "CVE-2025-38412", "created_at": "2025-09-12T07:00:00Z"},
+        {"ghsa_id": "GHSA-2wvc-8f3r-9k4d", "severity": "high", "state": "open",
+         "package": "urllib3", "ecosystem": "pip", "manifest_path": "requirements.txt",
+         "summary": "urllib3 leaks Authorization header on cross-origin redirect",
+         "cve_id": "CVE-2026-11907", "created_at": "2026-05-02T12:30:00Z"},
+        {"ghsa_id": "GHSA-mv84-cc32-8x5q", "severity": "medium", "state": "open",
+         "package": "lodash", "ecosystem": "npm", "manifest_path": "ui/package-lock.json",
+         "summary": "lodash prototype pollution in defaultsDeep",
+         "cve_id": "CVE-2026-20355", "created_at": "2026-06-18T16:05:00Z"},
+        {"ghsa_id": "GHSA-3p9x-77gm-2b6h", "severity": "high", "state": "fixed",
+         "package": "requests", "ecosystem": "pip", "manifest_path": "requirements.txt",
+         "summary": "requests session fixation on redirect chains",
+         "cve_id": "CVE-2025-49110", "created_at": "2026-01-10T09:00:00Z",
+         "fixed_at": "2026-02-02T14:22:00Z"}
+      ]
+    },
+
+    {
+      "id": 102,
+      "name": "web-frontend",
+      "full_name": "acme-demo/web-frontend",
+      "html_url": "https://github.com/acme-demo/web-frontend",
+      "private": false,
+      "visibility": "public",
+      "archived": false,
+      "fork": false,
+      "default_branch": "main",
+      "created_at": "2022-07-19T11:00:00Z",
+      "pushed_at": "2026-08-25T08:02:00Z",
+      "unattributed_commits": 2,
+      "collaborators": [
+        {"login": "lena-active",   "affiliation": "direct", "permission": "maintain"},
+        {"login": "noor-new",      "affiliation": "direct", "permission": "write"},
+        {"login": "release-bot",   "affiliation": "direct", "permission": "write"},
+        {"login": "priya-staff",   "affiliation": "team",   "permission": "write",
+         "teams": ["frontend-guild"]},
+        {"login": "alex-departed", "affiliation": "team",   "permission": "write",
+         "teams": ["platform-eng"]}
+      ],
+      "activity": {
+        "lena-active":  {"commits": 8, "reviews": 4, "prs_merged": 3, "prs_opened": 3,
+                         "last_commit_at": "2026-08-12T15:30:00Z",
+                         "last_review_at": "2026-08-14T09:12:00Z"},
+        "priya-staff":  {"commits": 0, "reviews": 11, "prs_merged": 0, "prs_opened": 0,
+                         "last_review_at": "2026-07-30T10:44:00Z"},
+        "noor-new":     {"commits": 5, "reviews": 1, "prs_merged": 2, "prs_opened": 2,
+                         "last_commit_at": "2026-08-18T13:15:00Z",
+                         "last_review_at": "2026-08-19T08:30:00Z"},
+        "release-bot":  {"commits": 15, "reviews": 0, "prs_merged": 15, "prs_opened": 15,
+                         "last_commit_at": "2026-08-25T08:02:00Z"}
+      },
+      "last_commit_ever": {
+        "alex-departed": "2025-06-21T17:55:00Z"
+      },
+      "advisories": [
+        {"ghsa_id": "GHSA-vv6q-4m2j-7d8s", "severity": "critical", "state": "open",
+         "package": "next", "ecosystem": "npm", "manifest_path": "package-lock.json",
+         "summary": "Next.js middleware authorization bypass",
+         "cve_id": "CVE-2026-30122", "created_at": "2026-03-14T10:15:00Z"},
+        {"ghsa_id": "GHSA-8jrx-5c9w-4f2n", "severity": "medium", "state": "open",
+         "package": "postcss", "ecosystem": "npm", "manifest_path": "package-lock.json",
+         "summary": "postcss line return parsing error",
+         "cve_id": "CVE-2026-31880", "created_at": "2026-07-01T09:40:00Z"},
+        {"ghsa_id": "GHSA-qq44-9x8v-3m7t", "severity": "low", "state": "dismissed",
+         "package": "minimist", "ecosystem": "npm", "manifest_path": "package-lock.json",
+         "summary": "minimist prototype pollution",
+         "cve_id": "CVE-2025-44901", "created_at": "2025-12-05T11:20:00Z",
+         "dismissed_at": "2026-01-08T09:00:00Z", "dismissed_reason": "tolerable_risk"}
+      ]
+    },
+
+    {
+      "id": 103,
+      "name": "legacy-etl",
+      "full_name": "acme-demo/legacy-etl",
+      "html_url": "https://github.com/acme-demo/legacy-etl",
+      "private": true,
+      "visibility": "private",
+      "archived": true,
+      "fork": false,
+      "default_branch": "master",
+      "created_at": "2019-01-22T14:30:00Z",
+      "pushed_at": "2026-04-02T10:10:00Z",
+      "unattributed_commits": 12,
+      "collaborators": [
+        {"login": "ravi-owner",    "affiliation": "direct", "permission": "admin"},
+        {"login": "sam-stale",     "affiliation": "direct", "permission": "admin"},
+        {"login": "tom-triage",    "affiliation": "direct", "permission": "read"},
+        {"login": "kai-solo",      "affiliation": "direct", "permission": "write"},
+        {"login": "maya-platform", "affiliation": "team",   "permission": "maintain",
+         "teams": ["data-eng"]}
+      ],
+      "activity": {
+        "kai-solo":   {"commits": 2, "reviews": 0, "prs_merged": 0, "prs_opened": 1,
+                       "last_commit_at": "2026-03-19T09:25:00Z"},
+        "ravi-owner": {"commits": 1, "reviews": 0, "prs_merged": 1, "prs_opened": 1,
+                       "last_commit_at": "2026-04-02T10:10:00Z"}
+      },
+      "last_commit_ever": {
+        "sam-stale": "2024-06-02T11:47:00Z",
+        "maya-platform": "2023-11-08T16:20:00Z",
+        "tom-triage": null
+      },
+      "advisories": [
+        {"ghsa_id": "GHSA-59hf-2m3x-6q8p", "severity": "high", "state": "open",
+         "package": "pyyaml", "ecosystem": "pip", "manifest_path": "requirements.txt",
+         "summary": "PyYAML arbitrary code execution via full_load",
+         "cve_id": "CVE-2025-41200", "created_at": "2025-11-20T08:00:00Z"},
+        {"ghsa_id": "GHSA-6x2c-9v4h-5j3k", "severity": "medium", "state": "open",
+         "package": "jinja2", "ecosystem": "pip", "manifest_path": "requirements.txt",
+         "summary": "Jinja2 sandbox escape via str.format",
+         "cve_id": "CVE-2026-15533", "created_at": "2026-04-09T13:45:00Z"},
+        {"ghsa_id": "GHSA-w8q7-3r5t-2n6v", "severity": "low", "state": "open",
+         "package": "six", "ecosystem": "pip", "manifest_path": "requirements.txt",
+         "summary": "six insecure temporary file usage",
+         "cve_id": "CVE-2026-10044", "created_at": "2026-02-11T15:00:00Z"}
+      ]
+    },
+
+    {
+      "id": 104,
+      "name": "ml-sandbox",
+      "full_name": "acme-demo/ml-sandbox",
+      "html_url": "https://github.com/acme-demo/ml-sandbox",
+      "private": true,
+      "visibility": "private",
+      "archived": false,
+      "fork": false,
+      "default_branch": "main",
+      "created_at": "2026-07-28T10:00:00Z",
+      "pushed_at": "2026-08-22T09:30:00Z",
+      "unattributed_commits": 0,
+      "collaborators": [
+        {"login": "noor-new",      "affiliation": "direct", "permission": "admin"},
+        {"login": "lena-active",   "affiliation": "direct", "permission": "write"},
+        {"login": "alex-departed", "affiliation": "direct", "permission": "write"}
+      ],
+      "activity": {
+        "noor-new":    {"commits": 12, "reviews": 0, "prs_merged": 2, "prs_opened": 3,
+                        "last_commit_at": "2026-08-22T09:30:00Z"},
+        "lena-active": {"commits": 3, "reviews": 1, "prs_merged": 1, "prs_opened": 1,
+                        "last_commit_at": "2026-08-05T14:00:00Z",
+                        "last_review_at": "2026-08-06T11:00:00Z"}
+      },
+      "last_commit_ever": {
+        "alex-departed": null
+      },
+      "advisories": []
+    },
+
+    {
+      "id": 105,
+      "name": "infra-scripts",
+      "full_name": "acme-demo/infra-scripts",
+      "html_url": "https://github.com/acme-demo/infra-scripts",
+      "private": true,
+      "visibility": "private",
+      "archived": false,
+      "fork": false,
+      "default_branch": "main",
+      "created_at": "2023-05-02T08:45:00Z",
+      "pushed_at": "2026-08-11T12:00:00Z",
+      "unattributed_commits": 1,
+      "collaborators": [
+        {"login": "kai-solo",   "affiliation": "direct", "permission": "admin"},
+        {"login": "tom-triage", "affiliation": "direct", "permission": "write"}
+      ],
+      "activity": {
+        "kai-solo": {"commits": 31, "reviews": 0, "prs_merged": 4, "prs_opened": 4,
+                     "last_commit_at": "2026-08-11T12:00:00Z"}
+      },
+      "last_commit_ever": {
+        "tom-triage": "2024-02-19T10:00:00Z"
+      },
+      "advisories": []
+    },
+
+    {
+      "id": 106,
+      "name": "vendor-sdk-fork",
+      "full_name": "acme-demo/vendor-sdk-fork",
+      "html_url": "https://github.com/acme-demo/vendor-sdk-fork",
+      "private": false,
+      "visibility": "public",
+      "archived": false,
+      "fork": true,
+      "default_branch": "main",
+      "created_at": "2024-09-14T09:00:00Z",
+      "pushed_at": "2025-02-03T11:00:00Z",
+      "unattributed_commits": 0,
+      "collaborators": [
+        {"login": "dev-vendor", "affiliation": "outside", "permission": "write"}
+      ],
+      "activity": {},
+      "last_commit_ever": {},
+      "advisories": []
+    }
+  ]
+}

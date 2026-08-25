@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ org }} — Security &amp; Access Hygiene</title>
+<style>
+  :root {
+    --ink: #14171f;
+    --ink-soft: #4a5261;
+    --ink-faint: #78808f;
+    --line: #e3e6ec;
+    --bg: #f6f7f9;
+    --card: #ffffff;
+    --accent: #1f4e79;
+    --critical: {{ severity_colors['critical'] }};
+    --high: {{ severity_colors['high'] }};
+    --medium: {{ severity_colors['medium'] }};
+    --low: {{ severity_colors['low'] }};
+    --good: #1f7a4d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0 0 64px;
+    background: var(--bg); color: var(--ink);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 20px; }
+  header.top {
+    background: var(--accent); color: #fff; padding: 26px 0 22px; margin-bottom: 26px;
+  }
+  header.top h1 { margin: 0 0 4px; font-size: 25px; letter-spacing: -0.2px; }
+  header.top .meta { opacity: .85; font-size: 13.5px; }
+
+  h2 { font-size: 19px; margin: 34px 0 4px; letter-spacing: -0.2px; }
+  h2 .num {
+    display: inline-block; width: 25px; height: 25px; line-height: 25px;
+    text-align: center; border-radius: 50%; background: var(--accent); color: #fff;
+    font-size: 13px; margin-right: 9px; vertical-align: 2px;
+  }
+  h3 { font-size: 15px; margin: 22px 0 8px; color: var(--ink-soft); }
+  .lede { color: var(--ink-soft); margin: 0 0 16px; max-width: 78ch; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 18px 20px; margin-bottom: 16px;
+  }
+  .bottom-line { border-left: 4px solid var(--accent); }
+  .bottom-line ul { margin: 8px 0 0; padding-left: 20px; }
+  .bottom-line li { margin-bottom: 6px; }
+  .bottom-line strong { color: var(--ink); }
+
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(158px, 1fr)); gap: 12px; margin-bottom: 8px; }
+  .kpi { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .kpi .v { font-size: 30px; font-weight: 640; letter-spacing: -1px; line-height: 1.1; }
+  .kpi .l { font-size: 12.5px; color: var(--ink-faint); margin-top: 3px; }
+  .kpi.alarm .v { color: var(--critical); }
+  .kpi.warn .v { color: var(--high); }
+  .kpi.calm .v { color: var(--good); }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1.1fr 1fr 1fr; gap: 16px; }
+  @media (max-width: 900px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+  .chartbox { position: relative; height: 240px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .5px; color: var(--ink-faint); font-weight: 600; }
+  tbody tr:hover { background: #fafbfc; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .scroll { overflow-x: auto; }
+
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 20px; font-size: 11.5px; font-weight: 600; color: #fff; white-space: nowrap; }
+  .pill.critical { background: var(--critical); }
+  .pill.high { background: var(--high); }
+  .pill.medium { background: var(--medium); }
+  .pill.low { background: var(--low); }
+  .pill.unknown { background: #767676; }
+
+  .tag { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 11px; font-weight: 600;
+         background: #eef1f5; color: var(--ink-soft); border: 1px solid var(--line); white-space: nowrap; }
+  .tag.archived { background: #f4ecd8; border-color: #e4d5b0; color: #7a5c17; }
+  .tag.private { background: #eaf0f6; border-color: #d3e0ec; color: #2a5a85; }
+  .tag.team { background: #ede8f6; border-color: #d9d0ee; color: #4b3a80; }
+  .tag.outside { background: #fdeaea; border-color: #f3cccc; color: #a02c2c; }
+  .tag.flag { background: #fdeaea; border-color: #f3cccc; color: #a02c2c; }
+  .tag.ok { background: #e7f4ec; border-color: #c9e6d6; color: var(--good); }
+
+  .riskbar { display: flex; align-items: center; gap: 7px; }
+  .riskbar .track { flex: 1; height: 6px; background: #edeff3; border-radius: 3px; overflow: hidden; min-width: 46px; }
+  .riskbar .fill { height: 100%; background: var(--critical); }
+  .mono { font-variant-numeric: tabular-nums; }
+  .muted { color: var(--ink-faint); }
+  .why { color: var(--ink-soft); font-size: 12.5px; max-width: 46ch; }
+  a { color: var(--accent); }
+  code { background: #f0f2f5; padding: 1px 5px; border-radius: 4px; font-size: 12.5px; }
+
+  details.repo { background: var(--card); border: 1px solid var(--line); border-radius: 10px; margin-bottom: 10px; }
+  details.repo > summary { padding: 13px 18px; cursor: pointer; list-style: none; display: flex;
+                           align-items: center; gap: 10px; flex-wrap: wrap; }
+  details.repo > summary::-webkit-details-marker { display: none; }
+  details.repo > summary::before { content: "▸"; color: var(--ink-faint); font-size: 13px; }
+  details.repo[open] > summary::before { content: "▾"; }
+  details.repo > summary .rname { font-weight: 640; }
+  details.repo > summary .spacer { flex: 1; }
+  details.repo .body { padding: 0 18px 16px; }
+  .blocked { background: #fff9ec; border: 1px solid #f0e2c0; border-radius: 8px;
+             padding: 9px 12px; font-size: 13px; color: #7a5c17; margin-bottom: 12px; }
+  .excl-group { margin-bottom: 14px; }
+  .excl-group h4 { margin: 0 0 5px; font-size: 13.5px; }
+  footer { color: var(--ink-faint); font-size: 12.5px; margin-top: 30px; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <h1>{{ org }} — security &amp; access hygiene</h1>
+    <div class="meta">
+      Generated {{ generated_at_label }} ·
+      Activity window: last {{ lookback_days }} days ·
+      {{ kpis.repos_scanned }} repositories scanned{% if kpis.repos_skipped %}, {{ kpis.repos_skipped }} skipped{% endif %} ·
+      Run #{{ run.run_id }}
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="card bottom-line">
+    <strong>The short version</strong>
+    <ul>
+      {% if kpis.critical_high_open %}
+      <li><strong>{{ kpis.critical_high_open }} critical or high severity {{ 'vulnerability is' if kpis.critical_high_open == 1 else 'vulnerabilities are' }} still open</strong>
+          across {{ advisories.most_affected|length }} {{ 'repository' if advisories.most_affected|length == 1 else 'repositories' }}.
+        {% if advisories.oldest %}The oldest has been open for {{ advisories.oldest.age_days }} days.{% endif %}
+      </li>
+      {% else %}
+      <li>No critical or high severity vulnerabilities are currently open.</li>
+      {% endif %}
+
+      {% if kpis.suggestions %}
+      <li><strong>{{ kpis.suggestions }} {{ 'person holds' if kpis.suggestions == 1 else 'access grants look' }} stale</strong>
+          {% if kpis.admin_suggestions %}— {{ kpis.admin_suggestions }} of them at <strong>admin</strong> level{% endif %}.
+          These are suggestions for human review; nothing has been changed.
+      </li>
+      {% else %}
+      <li>No access grants fell below the activity threshold. Nothing to review.</li>
+      {% endif %}
+
+      <li>{{ kpis.people_reviewed }} people were assessed.
+          {{ kpis.excluded }} were deliberately excluded from suggestions (owners, bots, allowlisted accounts, and repos too new or too small to judge) — listed in full at the bottom.</li>
+    </ul>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi {{ 'alarm' if kpis.critical_high_open else 'calm' }}">
+      <div class="v">{{ kpis.critical_high_open }}</div><div class="l">Critical + high, open</div>
+    </div>
+    <div class="kpi {{ 'warn' if kpis.open_advisories else 'calm' }}">
+      <div class="v">{{ kpis.open_advisories }}</div><div class="l">Open advisories, all severities</div>
+    </div>
+    <div class="kpi {{ 'warn' if kpis.suggestions else 'calm' }}">
+      <div class="v">{{ kpis.suggestions }}</div><div class="l">Suggested access removals</div>
+    </div>
+    <div class="kpi {{ 'alarm' if kpis.admin_suggestions else 'calm' }}">
+      <div class="v">{{ kpis.admin_suggestions }}</div><div class="l">Of those, admin access</div>
+    </div>
+    <div class="kpi"><div class="v">{{ kpis.repos_scanned }}</div><div class="l">Repositories scanned</div></div>
+    <div class="kpi"><div class="v">{{ kpis.people_reviewed }}</div><div class="l">People assessed</div></div>
+  </div>
+
+  <!-- ============================ 1. ADVISORIES ============================ -->
+  <h2><span class="num">1</span>Security advisories</h2>
+  <p class="lede">
+    Every Dependabot alert across the organization, grouped by how serious it is and whether
+    anyone has dealt with it. <strong>Open</strong> means still exploitable today.
+  </p>
+
+  <div class="grid-3">
+    <div class="card">
+      <h3 style="margin-top:0">Open alerts by severity</h3>
+      {% if chart_js %}<div class="chartbox"><canvas id="sevChart"></canvas></div>{% endif %}
+      <table style="margin-top:10px">
+        <thead><tr><th>Severity</th><th class="num">Open</th><th class="num">Fixed</th><th class="num">Dismissed</th></tr></thead>
+        <tbody>
+          {% for sev in severity_order %}
+          {% set row = advisories.by_severity.get(sev, {}) %}
+          <tr>
+            <td><span class="pill {{ sev }}">{{ sev|title }}</span></td>
+            <td class="num"><strong>{{ row.get('open', 0) }}</strong></td>
+            <td class="num muted">{{ row.get('fixed', 0) }}</td>
+            <td class="num muted">{{ row.get('dismissed', 0) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">Status of all alerts</h3>
+      {% if chart_js %}<div class="chartbox"><canvas id="stateChart"></canvas></div>{% endif %}
+      <p class="muted" style="font-size:12.5px;margin:10px 0 0">
+        {{ advisories.rows_total }} alerts total.
+        {% if advisories.by_state.get('dismissed') or advisories.by_state.get('auto_dismissed') %}
+        Dismissed alerts were closed by a person or a rule without a fix — worth spot-checking.
+        {% endif %}
+      </p>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">Most affected repositories</h3>
+      {% if chart_js %}<div class="chartbox"><canvas id="repoChart"></canvas></div>{% endif %}
+      {% if not advisories.most_affected %}<p class="muted">No repository has open alerts.</p>{% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">Oldest unresolved alerts</h3>
+    <p class="lede" style="margin-bottom:10px">Sorted by how long they have been open. These are the ones that have been ignored the longest.</p>
+    {% if advisories.oldest_unresolved %}
+    <div class="scroll">
+    <table>
+      <thead>
+        <tr><th>Age</th><th>Severity</th><th>Package</th><th>Repository</th><th>Advisory</th><th>Summary</th></tr>
+      </thead>
+      <tbody>
+        {% for a in advisories.oldest_unresolved %}
+        <tr>
+          <td class="num mono"><strong>{{ a.age_days }}d</strong></td>
+          <td><span class="pill {{ a.severity }}">{{ a.severity|title }}</span></td>
+          <td><code>{{ a.package }}</code> <span class="muted">{{ a.ecosystem }}</span></td>
+          <td><a href="{{ a.repo_url }}">{{ a.repo }}</a>{% if a.is_archived %} <span class="tag archived">archived</span>{% endif %}</td>
+          <td class="mono" style="font-size:12px">
+            <a href="{{ a.url }}">{{ a.ghsa_id }}</a>{% if a.cve_id %}<br><span class="muted">{{ a.cve_id }}</span>{% endif %}
+          </td>
+          <td class="why">{{ a.summary or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="muted">Nothing unresolved.</p>
+    {% endif %}
+  </div>
+
+  <!-- ========================= 2. PER-REPO MEMBERS ========================= -->
+  <h2><span class="num">2</span>Who has access, and what they did with it</h2>
+  <p class="lede">
+    One row per person per repository. <strong>Score</strong> combines commits, reviews and pull
+    requests over the last {{ lookback_days }} days, with older work counting for less. A score
+    below <strong>{{ '%.1f'|format(threshold) }}</strong> triggers a review suggestion. Repositories are ordered by how many
+    suggestions they produced. Click any repository to expand it.
+  </p>
+
+  {% for repo in repos %}
+  <details class="repo" {% if repo.flagged_count %}open{% endif %}>
+    <summary>
+      <span class="rname">{{ repo.name }}</span>
+      {% if repo.is_private %}<span class="tag private">private</span>{% endif %}
+      {% if repo.is_archived %}<span class="tag archived">archived</span>{% endif %}
+      {% if repo.is_empty %}<span class="tag">empty</span>{% endif %}
+      <span class="spacer"></span>
+      {% if repo.open_advisories %}<span class="tag flag">{{ repo.open_advisories }} open {{ 'alert' if repo.open_advisories == 1 else 'alerts' }}</span>{% endif %}
+      {% if repo.flagged_count %}
+        <span class="tag flag">{{ repo.flagged_count }} to review</span>
+      {% else %}
+        <span class="tag ok">access looks current</span>
+      {% endif %}
+      <span class="muted" style="font-size:12.5px">{{ repo.members|length }} with access</span>
+    </summary>
+    <div class="body">
+      {% if repo.blocked_reason %}
+      <div class="blocked">
+        <strong>No removal suggestions for this repository.</strong>
+        {{ repo.blocked_detail or exclusions.labels.get(repo.blocked_reason, repo.blocked_reason) }}
+      </div>
+      {% endif %}
+      <p class="muted" style="font-size:12.5px;margin:0 0 10px">
+        Created {{ repo.created_at|fmt_date }} · last push {{ repo.pushed_at|fmt_date }} ·
+        {{ repo.total_commits }} commits in window from {{ repo.contributor_count }} identified {{ 'contributor' if repo.contributor_count == 1 else 'contributors' }}
+        {% if repo.unattributed_commits %}
+          · <strong>{{ repo.unattributed_commits }} commits could not be attributed</strong>
+          <span class="muted">(commit email not linked to any GitHub account — deliberately not guessed)</span>
+        {% endif %}
+        {% if repo.url %} · <a href="{{ repo.url }}">open on GitHub</a>{% endif %}
+      </p>
+      <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Member</th><th>How they have access</th>
+            <th class="num">Commits</th><th class="num">PRs reviewed</th><th class="num">PRs merged</th>
+            <th>Last activity</th><th class="num">Score</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in repo.members %}
+          <tr>
+            <td><strong>{{ m.login }}</strong></td>
+            <td style="font-size:12.5px">
+              {{ m.access_path }}
+              {% if m.is_team_only %}<span class="tag team">team-inherited</span>{% endif %}
+            </td>
+            <td class="num mono">{{ m.commits }}</td>
+            <td class="num mono">{{ m.reviews }}</td>
+            <td class="num mono">{{ m.prs_merged }}</td>
+            <td class="mono" style="font-size:12.5px">{{ m.last_activity|fmt_ago }}</td>
+            <td class="num mono"><strong>{{ '%.2f'|format(m.score) }}</strong></td>
+            <td>
+              {% if m.excluded_reason %}
+                <span class="tag">excluded — {{ m.excluded_label or m.excluded_reason }}</span>
+              {% elif m.flagged %}
+                <span class="tag flag">review access</span>
+              {% else %}
+                <span class="tag ok">active</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    </div>
+  </details>
+  {% endfor %}
+
+  <!-- ========================== 3. SUGGESTIONS ============================= -->
+  <h2><span class="num">3</span>Suggested access removals</h2>
+  <p class="lede">
+    Ranked by <strong>risk</strong> = how much power the grant carries, divided by how much the
+    person is using it. A dormant admin ranks above a dormant reader.
+    <strong>Nothing here has been changed</strong> — this tool never revokes access. Every row is a
+    recommendation for a human to confirm.
+  </p>
+
+  {% if suggestions %}
+  <div class="card">
+    <div class="scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>Member</th><th>Repository</th><th>Permission</th>
+          <th>Last commit</th><th>Last review</th><th class="num">Score</th>
+          <th style="min-width:120px">Risk</th><th>Why flagged</th><th>What to do</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set max_risk = suggestions[0].risk if suggestions else 1 %}
+        {% for s in suggestions %}
+        <tr>
+          <td class="num muted mono">{{ loop.index }}</td>
+          <td><strong>{{ s.login }}</strong></td>
+          <td>
+            <a href="{{ s.repo_url }}">{{ s.repo_name }}</a>
+            {% if s.is_archived %}<span class="tag archived">archived</span>{% endif %}
+          </td>
+          <td>
+            <span class="tag {{ 'flag' if s.permission|lower in ['admin', 'maintain'] else '' }}">{{ s.permission }}</span>
+            {% if s.team_only %}<span class="tag team">via {{ s.team_names or 'team' }}</span>{% endif %}
+          </td>
+          <td class="mono" style="font-size:12.5px">
+            {{ s.last_commit|fmt_ago }}
+            {% if s.last_commit and not s.last_commit_in_window %}<br><span class="muted">before the window</span>{% endif %}
+          </td>
+          <td class="mono" style="font-size:12.5px">{{ s.last_review|fmt_ago }}</td>
+          <td class="num mono">{{ '%.2f'|format(s.score) }}</td>
+          <td>
+            <div class="riskbar">
+              <div class="track"><div class="fill" style="width: {{ (100 * s.risk / max_risk)|round(0, 'floor')|int }}%"></div></div>
+              <span class="mono" style="font-size:12px">{{ '%.2f'|format(s.risk) }}</span>
+            </div>
+          </td>
+          <td class="why">{{ s.reason }}</td>
+          <td class="why">{{ s.action }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+  {% else %}
+  <div class="card"><p class="muted" style="margin:0">No access grants fell below the threshold.</p></div>
+  {% endif %}
+
+  <!-- ========================== 4. EXCLUSIONS ============================== -->
+  <h2><span class="num">4</span>Who was excluded, and why</h2>
+  <p class="lede">
+    These people and repositories were deliberately kept out of the suggestions above. This panel
+    exists so the list you just read can be trusted: if you cannot see who was skipped, you have no
+    way to know whether the tool is hiding something.
+  </p>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3 style="margin-top:0">People never suggested for removal ({{ exclusions.member_total }})</h3>
+      {% if exclusions.members %}
+        {% for reason, people in exclusions.members.items() %}
+        <div class="excl-group">
+          <h4>{{ exclusions.labels.get(reason, reason) }} <span class="muted">({{ people|length }})</span></h4>
+          <table>
+            <tbody>
+            {% for p in people %}
+              <tr>
+                <td><strong>{{ p.login }}</strong></td>
+                <td class="muted">{{ p.repo }}</td>
+                <td>{% if p.permission and p.permission != 'Unknown' %}<span class="tag">{{ p.permission }}</span>{% endif %}</td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% endfor %}
+      {% else %}
+        <p class="muted">Nobody was excluded.</p>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">Repositories and how they were treated</h3>
+      {% if exclusions.repos %}
+        {% for reason, repos_ in exclusions.repos.items() %}
+        <div class="excl-group">
+          <h4>{{ exclusions.labels.get(reason, reason) }} <span class="muted">({{ repos_|length }})</span></h4>
+          <table>
+            <tbody>
+            {% for r in repos_ %}
+              <tr><td><strong>{{ r.repo_name }}</strong></td><td class="muted why">{{ r.detail or '' }}</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% endfor %}
+      {% else %}
+        <p class="muted">No repository-level exclusions.</p>
+      {% endif %}
+      {% if unattributed_total %}
+      <div class="excl-group">
+        <h4>Unattributed commits <span class="muted">({{ unattributed_total }})</span></h4>
+        <p class="muted" style="font-size:12.5px;margin:0">
+          Commits whose author email is not linked to any GitHub account. They are counted and
+          reported but never assigned to a person, because guessing would credit — or fail to
+          credit — the wrong someone.
+        </p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <footer>
+    <p>
+      Scoring: <code>activity = 3.0·ln(1+commits) + 2.5·ln(1+reviews) + 2.0·ln(1+PRs merged) + 1.0·ln(1+PRs opened)</code>,
+      then halved for every {{ config.scoring.half_life_days|int }} days since the person's last activity.
+      <code>risk = permission weight ÷ (1 + score)</code>, where admin=3, maintain=2, write=1.5, triage/read=0.5.
+      Flagged below {{ '%.1f'|format(threshold) }}.
+    </p>
+    <p>
+      Run #{{ run.run_id }} · started {{ run.started_at }} · database keyed on GitHub IDs, so re-running
+      updates this report in place rather than duplicating it. Access removal is always a suggestion,
+      never an automatic action.
+    </p>
+  </footer>
+</div>
+
+{% if chart_js %}
+<script>{{ chart_js }}</script>
+<script>
+(function () {
+  const grid = { color: "#eef0f4" };
+  const tick = { color: "#78808f", font: { size: 11 } };
+
+  new Chart(document.getElementById("sevChart"), {
+    type: "doughnut",
+    data: {
+      labels: {{ advisories.chart_severity.labels|tojson }},
+      datasets: [{
+        data: {{ advisories.chart_severity.data|tojson }},
+        backgroundColor: {{ advisories.chart_severity.colors|tojson }},
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: "58%",
+      plugins: { legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11.5 } } } }
+    }
+  });
+
+  new Chart(document.getElementById("stateChart"), {
+    type: "bar",
+    data: {
+      labels: {{ advisories.chart_state.labels|tojson }},
+      datasets: [{
+        data: {{ advisories.chart_state.data|tojson }},
+        backgroundColor: "#1f4e79", borderRadius: 4, maxBarThickness: 46
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { x: { grid: { display: false }, ticks: tick },
+                y: { beginAtZero: true, grid: grid, ticks: { ...tick, precision: 0 } } }
+    }
+  });
+
+  new Chart(document.getElementById("repoChart"), {
+    type: "bar",
+    data: {
+      labels: {{ advisories.chart_repos.labels|tojson }},
+      datasets: {{ advisories.chart_repos.series|tojson }}.map(s => ({
+        label: s.label, data: s.data, backgroundColor: s.color, borderRadius: 3
+      }))
+    },
+    options: {
+      indexAxis: "y", responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11 } } } },
+      scales: { x: { stacked: true, beginAtZero: true, grid: grid, ticks: { ...tick, precision: 0 } },
+                y: { stacked: true, grid: { display: false }, ticks: tick } }
+    }
+  });
+})();
+</script>
+{% endif %}
+</body>
+</html>
