@@ -25,7 +25,7 @@ import logging
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any, Mapping
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 

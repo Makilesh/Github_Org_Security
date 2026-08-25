@@ -38,7 +38,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from math import log1p
-from typing import Iterable, Mapping, Sequence
+from typing import Iterable, Sequence
 
 import config
 from config import ExclusionReason, ScoringConfig

@@ -7,7 +7,6 @@ asserting the exact number of seconds the client *would* have slept.
 
 from __future__ import annotations
 
-import json
 import time
 
 import httpx

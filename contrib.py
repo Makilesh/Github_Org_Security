@@ -29,7 +29,7 @@ import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Iterable, Mapping
+from typing import Any, Mapping
 
 import config
 from client import (

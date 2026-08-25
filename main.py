@@ -19,16 +19,15 @@ import logging
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Any, Sequence
 
 import config
 import demo as demo_mod
 import report
 from client import GitHubClient, GitHubError, RateLimitError
-from contrib import AccessEntry, TeamIndex, collect_repo, fetch_last_commit_ever, fetch_org_teams
+from contrib import AccessEntry, collect_repo, fetch_last_commit_ever, fetch_org_teams
 from db import Database, RunStatus, Stage
 from scan import (
-    RepoRecord,
     collect_advisories,
     fetch_org_members,
     fetch_repos,
@@ -36,7 +35,7 @@ from scan import (
     register_repos,
     window_start,
 )
-from score import MemberInput, RepoInput, assess_repo, rank_suggestions
+from score import MemberInput, RepoInput, assess_repo
 
 log = logging.getLogger("scanner")
 

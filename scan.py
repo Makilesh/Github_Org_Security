@@ -22,11 +22,10 @@ import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Any, Iterable, Iterator, Mapping
+from typing import Any, Iterable, Mapping
 
 import config
 from client import (
-    EmptyRepositoryError,
     ForbiddenError,
     GitHubClient,
     GitHubError,

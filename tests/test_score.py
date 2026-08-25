@@ -13,7 +13,6 @@ from math import log1p
 
 import pytest
 
-import config
 from config import ExclusionReason, ScoringConfig
 from score import (
     activity_score,
