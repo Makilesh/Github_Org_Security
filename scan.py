@@ -383,9 +383,29 @@ def register_repos(db: Database, run_id: int, repos: Iterable[RepoRecord]) -> tu
             skipped += 1
 
         for tag in record.tags:
-            db.upsert_exclusion(run_id, record.repo_id, "*", tag, detail="repository tag")
+            db.upsert_exclusion(run_id, record.repo_id, "*", tag, detail=tag_detail(tag))
 
     return scanning, skipped
+
+
+#: Prose for a repository tag. A dashboard row reading "repository tag" tells
+#: the reader nothing; these say what the tag actually meant for the scan.
+TAG_DETAILS: dict[str, str] = {
+    config.ExclusionReason.ARCHIVED_REPO:
+        "Archived, but still scanned - access on an archived repo is still live "
+        "access, and anyone holding it can unarchive the repo.",
+    config.ExclusionReason.FORK_REPO:
+        "A fork. Contribution history here mostly belongs to the upstream project.",
+    config.ExclusionReason.NEW_REPO:
+        "Created inside the lookback window, so nobody has had time to build a "
+        "history yet. Advisories are still reported.",
+    config.ExclusionReason.EMPTY_REPO:
+        "No commits, so there is no contribution history to judge.",
+}
+
+
+def tag_detail(tag: str) -> str:
+    return TAG_DETAILS.get(tag, "repository tag")
 
 
 def _skip_reason_code(reason: str | None) -> str:

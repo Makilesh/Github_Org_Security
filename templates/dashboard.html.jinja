@@ -148,8 +148,10 @@
       <li>No access grants fell below the activity threshold. Nothing to review.</li>
       {% endif %}
 
-      <li>{{ kpis.people_reviewed }} people were assessed.
-          {{ kpis.excluded }} were deliberately excluded from suggestions (owners, bots, allowlisted accounts, and repos too new or too small to judge) — listed in full at the bottom.</li>
+      <li>{{ kpis.people_reviewed }} people were assessed across {{ kpis.repos_scanned }} repositories.
+          {{ kpis.excluded }} access {{ 'grant was' if kpis.excluded == 1 else 'grants were' }} deliberately held back from
+          the suggestions — org owners, bots, allowlisted accounts, and repositories too new or too
+          small to judge fairly. All of them are listed in section 4.</li>
     </ul>
   </div>
 
@@ -306,7 +308,10 @@
             <td class="num mono">{{ m.commits }}</td>
             <td class="num mono">{{ m.reviews }}</td>
             <td class="num mono">{{ m.prs_merged }}</td>
-            <td class="mono" style="font-size:12.5px">{{ m.last_activity|fmt_ago }}</td>
+            <td class="mono" style="font-size:12.5px">
+              {{ m.last_seen|fmt_ago }}
+              {% if m.last_seen and not m.last_seen_in_window %}<br><span class="muted">before the window</span>{% endif %}
+            </td>
             <td class="num mono"><strong>{{ '%.2f'|format(m.score) }}</strong></td>
             <td>
               {% if m.excluded_reason %}

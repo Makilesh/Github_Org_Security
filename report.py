@@ -233,6 +233,12 @@ def repo_context(db: Database, run_id: int, now: datetime) -> list[dict[str, Any
                 "last_commit": row["last_commit_at"] or row["last_commit_ever"],
                 "last_review": row["last_review_at"],
                 "last_activity": row["last_activity_at"],
+                # Falling back to the all-time commit date matters: "never" is
+                # wrong when what we mean is "not in the last 180 days, and the
+                # last time was in November".
+                "last_seen": (row["last_activity_at"] or row["last_commit_at"]
+                              or row["last_commit_ever"]),
+                "last_seen_in_window": bool(row["last_activity_at"]),
                 "flagged": bool(row["flagged"]),
                 "excluded_reason": row["exclusion_reason"],
                 "excluded_label": config.EXCLUSION_LABELS.get(row["exclusion_reason"] or ""),
@@ -457,9 +463,13 @@ def render(
         trim_blocks=True,
         lstrip_blocks=True,
     )
+    # Bind the run's clock into the filters. Using the wall clock here would
+    # make every "N days ago" in the page drift between renders of the same
+    # run - and would make the pinned-clock demo stop being reproducible.
+    as_of = context["generated_at"]
     env.filters["fmt_date"] = fmt_date
-    env.filters["fmt_ago"] = fmt_ago
-    env.filters["age_days"] = age_days
+    env.filters["fmt_ago"] = lambda value: fmt_ago(value, as_of)
+    env.filters["age_days"] = lambda value: age_days(value, as_of)
     env.filters["permission"] = humanise_permission
 
     template = env.get_template("dashboard.html.jinja")

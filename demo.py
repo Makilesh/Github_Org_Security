@@ -33,7 +33,7 @@ from typing import Any, Iterator, Mapping
 import config
 from contrib import AccessEntry
 from db import Database, Stage
-from scan import RepoRecord, decide_repo, parse_ts
+from scan import RepoRecord, decide_repo, parse_ts, tag_detail
 from score import MemberInput, RepoInput
 
 log = logging.getLogger(__name__)
@@ -242,7 +242,7 @@ def seed_database(db: Database, run_id: int, org: DemoOrg) -> dict[str, int]:
         counts["repos_scanned"] += 1
 
         for tag in record.tags:
-            db.upsert_exclusion(run_id, record.repo_id, "*", tag, detail="repository tag")
+            db.upsert_exclusion(run_id, record.repo_id, "*", tag, detail=tag_detail(tag))
 
         open_advisories = 0
         with db.transaction():

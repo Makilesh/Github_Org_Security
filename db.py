@@ -844,6 +844,14 @@ class Database:
             "advisories_found": self.count("advisories", "run_id = ?", (run_id,)),
             "advisories_open": self.count("advisories", "run_id = ? AND state = 'open'", (run_id,)),
             "suggestions_made": self.count("scores", "run_id = ? AND flagged = 1", (run_id,)),
-            "members_excluded": self.count("exclusions", "run_id = ?", (run_id,)),
+            # Member and repository exclusions are counted separately: "14 people
+            # were excluded" and "14 exclusion rows exist" are different claims,
+            # and the repo-level rows use login = '*'.
+            "members_excluded": self.count(
+                "exclusions", "run_id = ? AND login != '*'", (run_id,)
+            ),
+            "repos_excluded": self.count(
+                "exclusions", "run_id = ? AND login = '*'", (run_id,)
+            ),
             "collaborators": self.count("collaborators", "run_id = ?", (run_id,)),
         }

@@ -298,6 +298,7 @@ def build_summary(
         "repos_scanned": counts["repos_scanned"],
         "repos_skipped": counts["repos_skipped"],
         "repos_errored": counts["repos_errored"],
+        "repos_excluded": counts["repos_excluded"],
         "advisories_found": counts["advisories_found"],
         "advisories_open": counts["advisories_open"],
         "suggestions_made": counts["suggestions_made"],
@@ -313,7 +314,7 @@ def build_summary(
 def print_human_summary(summary: dict[str, Any]) -> None:
     lines = [
         "",
-        f"  Run #{summary['run_id']} — {summary['org']} ({summary['mode']})",
+        f"  Run #{summary['run_id']} - {summary['org']} ({summary['mode']})",
         f"  {'-' * 58}",
         f"  Repositories scanned    {summary['repos_scanned']}"
         + (f"  ({summary['repos_skipped']} skipped)" if summary["repos_skipped"] else ""),
@@ -337,7 +338,7 @@ def print_human_summary(summary: dict[str, Any]) -> None:
         for item in summary["top_suggestions"]:
             via = " (team-inherited)" if item["team_inherited"] else ""
             lines.append(
-                f"    {item['risk']:>5.2f}  {item['login']} — {item['permission']}"
+                f"    {item['risk']:>5.2f}  {item['login']} - {item['permission']}"
                 f" on {item['repo']}{via}"
             )
     if summary.get("dashboard"):

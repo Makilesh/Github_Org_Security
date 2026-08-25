@@ -238,8 +238,8 @@ def repo_exclusion(
     if repo.contributor_count < min_contributors:
         return (
             ExclusionReason.SINGLE_CONTRIBUTOR,
-            f"Only {repo.contributor_count} contributor(s) in the window. With no "
-            f"one to compare against, a low score says nothing useful.",
+            f"Only {_count(repo.contributor_count, 'contributor')} in the window. "
+            f"With no one to compare against, a low score says nothing useful.",
         )
 
     return None
@@ -378,6 +378,11 @@ def assess_repo(
     return assessment
 
 
+def _count(n: int, singular: str, plural: str | None = None) -> str:
+    """'1 commit' / '3 commits'. Sloppy plurals make a report look automated."""
+    return f"{n} {singular if n == 1 else (plural or singular + 's')}"
+
+
 def explain_flag(scored: MemberScore, cfg: ScoringConfig | None = None) -> str:
     """One sentence a non-engineer can act on. This is the 'why' column."""
     cfg = cfg or config.SCORING
@@ -393,8 +398,9 @@ def explain_flag(scored: MemberScore, cfg: ScoringConfig | None = None) -> str:
     else:
         when = (
             f"last contributed {int(scored.days_since_activity)} days ago"
-            f" ({scored.commits} commits, {scored.reviews} PRs reviewed,"
-            f" {scored.prs_merged} PRs merged in the window)"
+            f" ({_count(scored.commits, 'commit')},"
+            f" {_count(scored.reviews, 'PR')} reviewed,"
+            f" {_count(scored.prs_merged, 'PR')} merged in the window)"
         )
 
     return (
