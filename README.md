@@ -194,10 +194,11 @@ archived repo is still live access, and anyone holding it can unarchive the repo
 python -m pytest -q
 ```
 
-128 tests covering the scoring arithmetic against hand-computed values, every
+134 tests covering the scoring arithmetic against hand-computed values, every
 exclusion rule, the full fixture organization end-to-end (including the exact
-expected ranking), database idempotency, and the HTTP layer — rate-limit waits,
-`Retry-After`, ETag 304s, cursor pagination, and GraphQL error handling.
+expected ranking), database idempotency, the HTTP layer — rate-limit waits,
+`Retry-After`, ETag 304s, cursor pagination, GraphQL error handling — and the
+rule that a refused access listing is never rendered as "nobody has access".
 
 ```bash
 python -m pytest -q tests/test_score.py

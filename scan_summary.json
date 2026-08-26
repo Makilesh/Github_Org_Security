@@ -1,0 +1,30 @@
+{
+  "run_id": 2,
+  "org": "VoidAlgo",
+  "mode": "live",
+  "started_at": "2026-08-26T17:39:58+00:00",
+  "finished_at": "2026-08-26T17:40:06+00:00",
+  "status": "completed",
+  "repos_scanned": 1,
+  "repos_skipped": 0,
+  "repos_errored": 0,
+  "repos_excluded": 1,
+  "advisories_found": 0,
+  "advisories_open": 0,
+  "suggestions_made": 0,
+  "members_excluded": 2,
+  "collaborators_seen": 2,
+  "top_suggestions": [],
+  "dashboard": "D:\\GEN AI\\Github_Automation\\out\\dashboard.html",
+  "database": "D:\\GEN AI\\Github_Automation\\data\\scanner.sqlite3",
+  "api": {
+    "requests": 13,
+    "cache_hits": 0,
+    "retries": 0,
+    "rate_limit_sleeps": 0,
+    "rate_limit_slept_seconds": 0.0,
+    "graphql_queries": 4,
+    "graphql_cost": 4,
+    "errors": 0
+  }
+}

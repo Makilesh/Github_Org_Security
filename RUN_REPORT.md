@@ -5,8 +5,8 @@ each step produced. Every block below is real terminal output, pasted unedited.
 
 The reference run uses **demo mode**, because it is reproducible: the fixture
 pins its clock, so anyone running the same command on any machine on any day
-gets these exact numbers. Section 7 covers running it against a live
-organization.
+gets these exact numbers. **Step 8 is a real run against a live GitHub
+organization**, with the token permission probe that preceded it.
 
 Environment: Windows 11, Python 3.12.10, httpx 0.28.1, Jinja2 3.1.6.
 
@@ -34,18 +34,19 @@ python -m pytest -q
 ```
 
 ```
-........................................................................ [ 56%]
-........................................................                 [100%]
-128 passed in 0.21s
+........................................................................ [ 53%]
+..............................................................           [100%]
+134 passed in 0.25s
 ```
 
-**128 tests, 0.21 seconds.** They cover:
+**134 tests, 0.25 seconds.** They cover:
 
 | File | What it pins |
 | ---- | ------------ |
 | `tests/test_score.py` (66) | The scoring arithmetic against hand-computed values, decay behaviour, risk ordering, and every NEVER-FLAG rule |
 | `tests/test_pipeline.py` (33) | The whole fixture org end-to-end: who is flagged, in exactly what order, who is excluded and why, plus database idempotency |
 | `tests/test_client.py` (29) | Rate-limit pauses, `Retry-After`, 409/403/404 handling, ETag 304s, cursor pagination, GraphQL error types |
+| `tests/test_access.py` (6) | A refused collaborator listing is reported, never rendered as "nobody has access" |
 
 The scoring tests assert exact arithmetic, not plausibility — for example that
 `activity_score(commits=10)` equals `7.1936858`, which is `3.0 × ln(11)` computed
@@ -277,38 +278,139 @@ grouped by reason, so the list above can be trusted.
 
 ---
 
-## Step 8 — Running against a live organization
+## Step 8 — Live run against a real organization
 
-The demo above exercises every code path except the network. To run it for real:
+Everything above exercises the pipeline on fixtures. This section is a real run
+against a live GitHub organization (`VoidAlgo`, 1 private repository) using a
+fine-grained PAT.
+
+### Token permission probe
+
+Before scanning, each endpoint the tool depends on was probed individually:
+
+| Endpoint | Result | Permission |
+| -------- | ------ | ---------- |
+| `/rate_limit` | OK — REST 5000/5000, GraphQL 5000/5000 | authentication |
+| `/orgs/{org}` | OK | Metadata |
+| `/orgs/{org}/members?role=admin` | OK — 2 owners | Org > Members: read |
+| `/orgs/{org}/teams` | OK — 0 teams | Org > Members: read |
+| `/orgs/{org}/repos` | OK — 1 repo | Org > Administration: read |
+| `/orgs/{org}/dependabot/alerts` | OK — 0 alerts | Org > Dependabot alerts: read |
+| `/repos/{r}/collaborators?affiliation=direct` | OK — 2 | Repo > Administration: read |
+| `/repos/{r}/collaborators?affiliation=outside` | OK — 0 | Repo > Administration: read |
+| `/repos/{r}/collaborators?affiliation=all` | OK — 2 | Repo > Administration: read |
+| `/repos/{r}/commits` | OK | Repo > Contents: read |
+| `/repos/{r}/pulls` | OK | Repo > Pull requests: read |
+| `/repos/{r}/dependabot/alerts` | **403 — "Dependabot alerts are disabled for this repository"** | feature not enabled |
+| GraphQL commits + PRs | OK — 205 commits, 34 PRs | Contents + Pull requests |
+
+The single failure is a *feature* state, not a permission: Dependabot alerts are
+switched off on the repository, so there is nothing for the advisory half to
+report. The scanner records that and continues rather than aborting.
+
+### The scan
 
 ```bash
-cp .env.example .env
+python main.py -v
 ```
 
-Set `GITHUB_TOKEN` and `GITHUB_ORG`, then start small:
+```
+20:03:36  INFO  scanner: Started run #3 for VoidAlgo
+20:03:36  INFO  scanner: Token OK. REST quota 4964/5000, GraphQL 4954/5000
+20:03:37  INFO  scan:    Org VoidAlgo has 2 owner(s)
+20:03:38  INFO  scan:    Found 1 repos in VoidAlgo; scanning 1, skipping 0
+20:03:38  INFO  scanner: Registered 1 repos (1 to scan, 0 skipped)
+20:03:38  INFO  scan:    Org-level Dependabot endpoint returned 0 alerts across 0 repos
+20:03:39  INFO  contrib: Indexed 0 teams in VoidAlgo
+20:03:39  INFO  scanner: [1/1] VoidAlgo/pseudoquant
+20:03:44  INFO  report:  Dashboard written to out\dashboard.html (218 KB)
 
-```bash
-python main.py --limit 5 -v
+  Run #3 - VoidAlgo (live)
+  ----------------------------------------------------------
+  Repositories scanned    1
+  Advisories found        0  (0 still open)
+  Access suggestions      0
+  Excluded from review    2
+  API                     13 requests, 0 served from cache, 0 rate-limit pauses
 ```
 
-```bash
-python main.py
+### What it found
+
+`VoidAlgo/pseudoquant` — private, created 25 Jul 2026, 205 commits in the
+window from 2 identified contributors, **6 commits that could not be attributed**
+(commit email not linked to any GitHub account — counted, reported, never guessed).
+
+| Member | Access | Commits | PRs reviewed | PRs merged | Last activity | Score | Outcome |
+| ------ | ------ | ------- | ------------ | ---------- | ------------- | ----- | ------- |
+| Makilesh | Direct (Admin) | 183 | 8 | 22 | 16 Aug 2026 (10 days) | 29.51 | excluded — org owner |
+| clashonkishy | Direct (Admin) | 16 | 2 | 8 | 27 Jul 2026 (29 days) | 15.90 | excluded — org owner |
+
+**Zero suggestions, for three independent and individually sufficient reasons:**
+
+1. Both collaborators are **organization owners** — a hard NEVER-FLAG rule.
+2. Both are far above the threshold anyway (29.51 and 15.90 against a threshold
+   of 5.0), so they would not be flagged even without rule 1.
+3. The repository was **created 32 days ago**, inside the 180-day window, so
+   removal suggestions are suppressed for it entirely.
+
+The dashboard states all three rather than presenting an unexplained empty list:
+
+> No access grants fell below the activity threshold. Nothing to review.
+>
+> *No removal suggestions for this repository.* Created 32 days ago, inside the
+> 180-day window. Nobody has had time to build a history here yet.
+
+This is the correct result for a young repository maintained by its two owners.
+It is also a thin demonstration, which is precisely why `--demo` exists.
+
+### Idempotency and caching, verified live
+
+Running the identical command a second time against the same database:
+
+```json
+"api": {
+  "requests": 13,
+  "cache_hits": 8,
+  "retries": 0,
+  "rate_limit_sleeps": 0,
+  "graphql_queries": 4,
+  "graphql_cost": 4,
+  "errors": 0
+}
 ```
 
-Expected differences from the demo output:
+**8 of 13 requests were served from stored ETags** — 304 responses, which do not
+count against the API quota. Row counts after two full live runs:
 
-- An auth line reporting remaining REST and GraphQL quota before work starts.
-- A `[n/N] org/repo` progress line per repository.
-- A populated `"api"` block in `--json`: request count, cache hits, retries and
-  rate-limit pauses.
-- On a second run, a high `cache_hits` figure — those are 304 responses, which
-  do not count against the API quota.
-
-If the run is interrupted, progress is saved per repo:
-
-```bash
-python main.py --resume
 ```
+  runs             2
+  repos            1
+  collaborators    2
+  contributions    2
+  scores           2
+  exclusions       3
+  advisories       0
+  http_cache       8
+```
+
+Two runs, two `runs` rows, and every fact table unchanged. Idempotency and
+conditional-request caching both confirmed against the real API, not just
+against mocks.
+
+### A bug this live run exposed
+
+An earlier token lacked repository `Administration: read`. The collaborator
+listings returned 403, the code treated that as an allowed-empty result, and the
+dashboard would have reported **"nobody has access to any repository"** —
+confidently, and wrongly. For a security report that is the worst possible
+failure mode.
+
+Fixed: the three listings now run through a helper that captures the refusal,
+`AccessSnapshot.complete` distinguishes *empty* from *unreadable*, and the
+dashboard leads with a red banner naming every repository whose access could not
+be read. Covered by `tests/test_access.py`. No unit test would have caught this —
+the code did exactly what it was written to do; the mistake was deciding a 403
+was an acceptable empty result.
 
 ### What is mocked, stated plainly
 
