@@ -23,6 +23,16 @@ This runs the complete pipeline against `fixtures/demo_org.json` (a synthetic
 clock, so the numbers are identical on every machine and every day — which
 makes it a stable reference when comparing your run to ours.
 
+**Don't want to run anything?** A generated copy is committed at
+[docs/demo_dashboard.html](docs/demo_dashboard.html) — open it straight from a
+clone. It is the byte-for-byte output of the command above, and it contains
+only synthetic fixture data, which is why it is the one scan result in this
+repo that is safe to commit.
+
+To turn it into a PDF, open it and use the browser's **Print → Save as PDF**.
+The page carries a print stylesheet that expands every collapsed repository
+section, unclips the wide tables and repeats table headers across pages.
+
 See [DESIGN_NOTES.md](DESIGN_NOTES.md) for why the demo exists and exactly what
 is mocked, and [RUN_REPORT.md](RUN_REPORT.md) for a captured walkthrough of a
 real execution.
@@ -194,11 +204,18 @@ archived repo is still live access, and anyone holding it can unarchive the repo
 python -m pytest -q
 ```
 
-134 tests covering the scoring arithmetic against hand-computed values, every
+137 tests covering the scoring arithmetic against hand-computed values, every
 exclusion rule, the full fixture organization end-to-end (including the exact
 expected ranking), database idempotency, the HTTP layer — rate-limit waits,
 `Retry-After`, ETag 304s, cursor pagination, GraphQL error handling — and the
-rule that a refused access listing is never rendered as "nobody has access".
+rule that a refused access listing is never rendered as "nobody has access",
+and the rule that an archived repo changes the remediation advice but never
+the score.
+
+CI runs the suite on Python 3.11 and 3.12, then runs `--demo` end-to-end and
+fails the build if the fixture findings drift from the numbers published in
+[RUN_REPORT.md](RUN_REPORT.md) — see
+[.github/workflows/tests.yml](.github/workflows/tests.yml).
 
 ```bash
 python -m pytest -q tests/test_score.py
@@ -222,6 +239,8 @@ fixtures/      synthetic org used by --demo and the tests
 templates/     Jinja2 dashboard template
 vendor/        Chart.js, inlined into the output so it works offline
 tests/         pytest suite
+docs/          committed demo dashboard, openable without running anything
+.github/       CI, and a weekly scheduled scan that notifies but never revokes
 ```
 
 Data lands in `data/scanner.sqlite3`; the dashboard in `out/dashboard.html`.
