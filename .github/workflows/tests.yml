@@ -1,0 +1,54 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Run test suite
+        run: python -m pytest -q
+
+      # The demo needs no token and no network, so CI can prove the whole
+      # pipeline still runs end-to-end, not just that the units pass.
+      - name: Smoke-test the full pipeline on fixtures
+        run: python main.py --demo --json > demo_summary.json
+
+      - name: Check the demo produced the expected findings
+        run: |
+          python - <<'PY'
+          import json, sys
+          s = json.load(open("demo_summary.json"))
+          expected = {"repos_scanned": 5, "advisories_found": 10, "suggestions_made": 10}
+          bad = {k: (s.get(k), v) for k, v in expected.items() if s.get(k) != v}
+          if bad:
+              print("demo output drifted (got, expected):", bad)
+              sys.exit(1)
+          print("demo output matches RUN_REPORT.md")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: matrix.python-version == '3.12'
+        with:
+          name: demo-dashboard
+          path: out/dashboard.html

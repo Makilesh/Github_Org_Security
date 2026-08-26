@@ -111,6 +111,42 @@
   .excl-group { margin-bottom: 14px; }
   .excl-group h4 { margin: 0 0 5px; font-size: 13.5px; }
   footer { color: var(--ink-faint); font-size: 12.5px; margin-top: 30px; }
+
+  /* ---------------------------------------------------------------------
+     Print / "Save as PDF".
+
+     The brief asks for a snapshot of the dashboard in a document, and the
+     browser's own PDF export is the shortest path to one. Three things
+     otherwise go wrong: collapsed <details> print collapsed and silently
+     drop most of the report; horizontally-scrolling tables print clipped at
+     the fold; and rows split across page breaks.
+     --------------------------------------------------------------------- */
+  @media print {
+    @page { margin: 12mm; }
+
+    body { background: #fff; font-size: 11px; }
+    .wrap { max-width: none; padding: 0; }
+
+    /* Every repository section opens, whether or not it was expanded. */
+    details.repo { break-inside: auto; border-color: #ccc; }
+    details.repo > summary { break-after: avoid; }
+    details.repo > summary::before { content: ""; }
+    details.repo > .body { display: block !important; content-visibility: visible !important; }
+
+    /* Scroll containers have no fold to scroll to on paper. */
+    .scroll { overflow: visible !important; }
+    table { font-size: 10px; }
+    thead { display: table-header-group; }   /* repeat headers across pages */
+    tr, .card { break-inside: avoid; }
+
+    h2 { break-after: avoid; }
+    .card { box-shadow: none; border-color: #ccc; }
+    a { color: inherit; text-decoration: none; }
+
+    /* Charts rasterise unreliably across engines; the tables beside them
+       carry the same numbers, so drop them rather than print blank boxes. */
+    .chartbox { display: none; }
+  }
 </style>
 </head>
 <body>
@@ -547,5 +583,44 @@
 })();
 </script>
 {% endif %}
+
+<script>
+/* Open every repository section before printing, and restore the reader's
+   expanded/collapsed state afterwards.
+
+   The print stylesheet tries to do this in CSS, but a closed <details> is
+   hidden by the engine's own slot rendering rather than by anything the page
+   can override reliably. Toggling the attribute is the only approach that
+   behaves the same in Chrome, Firefox and Safari. Without it "Save as PDF"
+   silently exports a report with most of section 2 missing - which is a
+   worse failure than an ugly PDF, because it looks complete. */
+(function () {
+  var reopened = [];
+
+  function expandAll() {
+    reopened = [];
+    document.querySelectorAll("details.repo:not([open])").forEach(function (d) {
+      reopened.push(d);
+      d.open = true;
+    });
+  }
+
+  function restore() {
+    reopened.forEach(function (d) { d.open = false; });
+    reopened = [];
+  }
+
+  window.addEventListener("beforeprint", expandAll);
+  window.addEventListener("afterprint", restore);
+
+  /* Safari and some print-to-PDF paths fire only the media query. */
+  if (window.matchMedia) {
+    var mq = window.matchMedia("print");
+    var onChange = function (e) { (e.matches ? expandAll : restore)(); };
+    if (mq.addEventListener) mq.addEventListener("change", onChange);
+    else if (mq.addListener) mq.addListener(onChange);
+  }
+})();
+</script>
 </body>
 </html>

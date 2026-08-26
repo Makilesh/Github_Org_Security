@@ -32,6 +32,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 import config
 from db import Database
 from scan import parse_ts
+from score import remediation_note
 
 log = logging.getLogger(__name__)
 
@@ -328,11 +329,12 @@ def suggestion_context(db: Database, run_id: int, now: datetime) -> list[dict[st
             "last_review": row["last_review_at"],
             "days_since": row["days_since_activity"],
             "reason": row["reason"],
-            "action": (
-                f"Review at team level ({row['team_names'] or 'team'}) - "
-                "removing this affects every repo that team can reach"
-                if team_only else
-                "Can be revoked on this repository alone"
+            # Shared with score.MemberScore.removal_note so the advice on the
+            # page cannot drift from the advice the model reasons about.
+            "action": remediation_note(
+                is_team_only=team_only,
+                teams=[t.strip() for t in str(row["team_names"] or "").split(",") if t.strip()],
+                is_archived=bool(row["is_archived"]),
             ),
         })
     return suggestions

@@ -1,2 +1,5 @@
-httpx>=0.27
-Jinja2>=3.1
+# Pinned so a re-run reproduces the numbers in RUN_REPORT.md exactly.
+# The brief asks that the team's results match the submitted ones; an
+# unpinned range is the easiest way for that to quietly stop being true.
+httpx==0.28.1
+Jinja2==3.1.6

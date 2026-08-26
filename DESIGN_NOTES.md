@@ -153,7 +153,7 @@ Handled explicitly, each with a test:
 | Case | Treatment |
 | ---- | --------- |
 | **Empty repos** | The commits endpoint returns 409. Raised as its own `EmptyRepositoryError`, tagged, excluded from suggestions — never swallowed as "no data". |
-| **Archived repos** | Scanned and tagged, *not* skipped. Stale admin on an archived repo is still live access, and any holder can unarchive it. In the demo the single highest-risk finding sits on an archived repo. |
+| **Archived repos** | Scanned and tagged, *not* skipped. Stale admin on an archived repo is still live access, and any holder can unarchive it. In the demo the single highest-risk finding sits on an archived repo. Archiving changes the *remediation advice* and never the score: GitHub refuses collaborator changes while a repo is archived, so the report tells the reviewer to remove the grant at org or team level rather than sending them to a settings page that will reject them. |
 | **Forks** | Skipped by default (`SKIP_FORKS`), because contribution history on a fork belongs mostly to the upstream project. Configurable, and the skip is recorded as a row so the reader can see it happened. |
 | **Unattributed commits** | When a commit's author email is not linked to a GitHub account, `author.user` is null. These are counted, totalled and reported — never attributed. Matching on raw name or email would silently credit the wrong person, and a review that quietly misattributes work is worse than one that admits a gap. |
 | **Bots** | Excluded by `type == "Bot"` or a login ending in `[bot]`. A test asserts a human named `robotnik` is still assessed. |
@@ -227,13 +227,15 @@ same status code and must not be handled the same way.
   so `--resume` continues at the next unfinished repo instead of refetching.
 - A test seeds the fixture org twice and asserts the row counts do not move.
 
-**One deliberate deviation from the brief.** It specified keying advisories on
-`ghsa_id`. A single repo can carry several open alerts for the same GHSA in
-different manifests — two lockfiles pinning the same vulnerable package — and
-keying on `(repo_id, ghsa_id)` alone would silently drop all but one. The key is
-`(repo_id, ghsa_id, manifest_path)`; `ghsa_id` remains indexed for cross-repo
-grouping. Losing real vulnerabilities to satisfy a key shape seemed like the
-wrong trade, so I made the change and flagged it rather than doing it quietly.
+**The advisory key is not the obvious one.** `ghsa_id` looks like the natural
+primary key for an advisory, and it is wrong. A single repo can carry several
+open alerts for the same GHSA in different manifests — two lockfiles pinning the
+same vulnerable package — so keying on `(repo_id, ghsa_id)` alone silently drops
+all but one, and silently dropping real vulnerabilities is the worst failure
+mode this tool has. The key is `(repo_id, ghsa_id, manifest_path)`; `ghsa_id`
+stays indexed for cross-repo grouping. I found this by reading an actual
+Dependabot payload rather than by reasoning about the schema, which is the
+argument for checking a real response before designing a table around it.
 
 ---
 
@@ -313,8 +315,10 @@ bound to the run's clock at render time.
   reason to be active".
 
 **Operations**
-- Run it as a scheduled job (GitHub Actions on a weekly cron) posting the
-  `--json` summary to Slack and publishing the dashboard as a Pages artifact.
+- ~~Run it as a scheduled job~~ — **built**, see
+  `.github/workflows/weekly-scan.yml` and section 10. Still to do: publish the
+  dashboard to Pages rather than to a build artifact, so the Slack message can
+  link to a page instead of to a download.
 - Open a tracking issue per suggestion, assigned to the repo owner, with a
   30-day auto-close — turning a report into a workflow. The report is a
   precondition for that, not a substitute.
@@ -354,6 +358,30 @@ so I leaned on `httpx`, `Jinja2`, `Chart.js` and SQLite for everything except
 the judgment, and wrote from scratch only the parts that *are* the judgment: the
 scoring model, the exclusion rules, and the API-etiquette layer.
 
+**Where the workflow platform does belong: orchestration, not logic.** Rejecting
+n8n for the *analysis* is not the same as rejecting scheduled automation, so the
+tool ships with the orchestration layer it was designed for —
+`.github/workflows/weekly-scan.yml`. The split is deliberate:
+
+| Layer | Owner | Why |
+| ----- | ----- | --- |
+| Scan, score, rank | `main.py` | Needs unit tests, transactional state and precise rate-limit behaviour |
+| Schedule, notify, publish | the workflow platform | Needs cron, secrets and a Slack integration, none of which belong in application code |
+
+`main.py --json` writes a machine-readable summary to stdout for exactly this
+reason; the workflow reads it, posts the top five suggestions to Slack only when
+there is something to act on, and uploads the dashboard as a build artifact. The
+scan database is restored from cache between runs so week two revalidates with
+ETags instead of refetching the org.
+
+**Note what the workflow deliberately does not contain: any step that removes
+access.** The automation is built right up to the point of action and stops
+there. That boundary is the brief's central constraint, and it is easier to
+defend as a line in a YAML file that a reviewer can read than as a promise in a
+document. The same workflow shape would port to n8n almost node-for-node —
+Schedule Trigger → Execute Command → IF → Slack — which is the honest reason I
+did not also build it there: it would demonstrate the same judgment twice.
+
 **Genuine difficulties encountered**
 
 - **GitHub has no `affiliation=team`.** Isolating team-inherited access requires
@@ -383,6 +411,11 @@ scoring model, the exclusion rules, and the API-etiquette layer.
 - All-time last-commit lookup for flagged members, bounded by suggestion count.
 - Determinism: stable tie-breaks in the ranking so two runs over unchanged data
   produce a byte-identical report, making it diffable week over week.
+- A weekly scheduled scan that notifies on findings and revokes nothing, plus CI
+  that runs the suite on two Python versions and then fails the build if a
+  `--demo` run stops producing the findings this documentation claims.
+- A print stylesheet on the dashboard, so "Save as PDF" produces a complete
+  report rather than one with every collapsed repository section missing.
 
 **What I would build next, given more time:** the accept/reject feedback loop.
 Everything else here is mechanism; that is the only thing that would make the
@@ -424,6 +457,29 @@ producing this documentation.
   from whatever the code happened to produce. That ordering — including the
   three-way tie at risk 1.50 resolved by login — is the strongest single check
   in the suite.
+
+**A second pass, before submission.** I also had the finished submission
+reviewed by the same assistant against the task brief, and acted on what it
+found. Two things it caught were real defects rather than polish:
+
+- **The remediation advice was wrong for archived repositories.** The report
+  told reviewers a stale grant "can be revoked on this repository alone" — but
+  GitHub refuses collaborator changes while a repo is archived, so that advice
+  cannot be followed. It affected four of the ten suggestions in the demo,
+  including the second-highest-risk finding. Fixed, with three tests.
+- **The same advice was written twice**, in `score.py` and again inline in
+  `report.py`, and the two copies had already drifted apart. They are now one
+  function that both call, which is why the archived case only had to be fixed
+  once.
+
+It also caught a documentation claim I could not support — an earlier draft of
+section 6 said the brief "specified keying advisories on `ghsa_id`" when the
+brief says nothing about keys — and two transposed test counts in
+`RUN_REPORT.md`. Both are now corrected. I mention this because a review that
+only ever confirms your own work is not worth much, and because the class of
+error is consistent with the rest of this section: the bugs were in paths a
+happy-path manual run never exercises, and the documentation errors were claims
+nobody had checked against the source.
 
 **The honest summary:** the assistant was substantially faster at producing
 correct-shaped code than I would have been alone, and produced three bugs that

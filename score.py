@@ -101,6 +101,55 @@ def days_between(later: datetime, earlier: datetime | None) -> float | None:
 
 
 # --------------------------------------------------------------------------
+# Remediation advice
+# --------------------------------------------------------------------------
+
+def remediation_note(
+    *,
+    is_team_only: bool,
+    teams: Sequence[str] = (),
+    is_archived: bool = False,
+) -> str:
+    """What a reviewer would actually have to do to act on a suggestion.
+
+    Lives here, and is called by both the scorer and the dashboard, so the
+    advice shown on the report can never drift from the advice the model
+    believes it is giving.
+
+    Two cases the obvious wording gets wrong:
+
+    * **Team-inherited access** cannot be revoked on the repo at all. Sending
+      someone to the repo's settings page for it wastes their time and hides
+      the blast radius of the real fix.
+    * **Archived repositories** reject collaborator changes outright - GitHub
+      makes the repo read-only, settings included. "Revoke this on the repo"
+      is advice that cannot be followed. Unarchiving to remove one grant also
+      re-opens the repo for writes, so the safer remedy is normally to remove
+      the access at the org or team level and leave it archived. This matters
+      more than it sounds: in the demo org the single highest-risk finding
+      sits on an archived repo.
+    """
+    if is_team_only:
+        via = ", ".join(teams) if teams else "a team"
+        note = (
+            f"Access is inherited from {via}. Removing it means changing "
+            f"team membership, which affects every repo that team can reach - "
+            f"review at the team level, not here."
+        )
+    else:
+        note = "Direct repository grant; can be revoked on this repo alone."
+
+    if is_archived:
+        note += (
+            " The repository is archived, and GitHub refuses collaborator "
+            "changes while it is - remove the grant at the org or team level, "
+            "or unarchive, revoke, and re-archive."
+        )
+
+    return note
+
+
+# --------------------------------------------------------------------------
 # Inputs and outputs
 # --------------------------------------------------------------------------
 
@@ -156,6 +205,7 @@ class MemberScore:
     excluded_detail: str | None = None
     access_label: str = ""
     is_team_only: bool = False
+    repo_archived: bool = False
     teams: tuple[str, ...] = ()
     last_commit_at: datetime | None = None
     last_review_at: datetime | None = None
@@ -172,14 +222,11 @@ class MemberScore:
     @property
     def removal_note(self) -> str:
         """What a reviewer would actually have to do to act on this."""
-        if self.is_team_only:
-            via = ", ".join(self.teams) if self.teams else "a team"
-            return (
-                f"Access is inherited from {via}. Removing it means changing "
-                f"team membership, which affects every repo that team can reach - "
-                f"review at the team level, not here."
-            )
-        return "Direct repository grant; can be revoked on this repo alone."
+        return remediation_note(
+            is_team_only=self.is_team_only,
+            teams=self.teams,
+            is_archived=self.repo_archived,
+        )
 
 
 @dataclass
@@ -296,8 +343,14 @@ def score_member(
     *,
     now: datetime | None = None,
     cfg: ScoringConfig | None = None,
+    repo_archived: bool = False,
 ) -> MemberScore:
-    """Score one member. No exclusion logic here - that is applied separately."""
+    """Score one member. No exclusion logic here - that is applied separately.
+
+    `repo_archived` does not affect the score. It only changes the remediation
+    advice, because stale access on an archived repo is just as live as
+    anywhere else - it is only harder to remove.
+    """
     cfg = cfg or config.SCORING
     now = now or datetime.now(timezone.utc)
 
@@ -325,6 +378,7 @@ def score_member(
         flagged=False,                       # decided by assess_repo
         access_label=member.access_label,
         is_team_only=member.is_team and not (member.is_direct or member.is_outside),
+        repo_archived=repo_archived,
         teams=member.teams,
         last_commit_at=member.last_commit_at,
         last_review_at=member.last_review_at,
@@ -361,7 +415,9 @@ def assess_repo(
         assessment.repo_exclusion, assessment.repo_exclusion_detail = repo_block
 
     for member in members:
-        scored = score_member(member, repo.repo_id, now=now, cfg=cfg)
+        scored = score_member(
+            member, repo.repo_id, now=now, cfg=cfg, repo_archived=repo.is_archived
+        )
 
         blocked = member_exclusion(member, org_owners=org_owners, allowlist=allowlist)
         if blocked:

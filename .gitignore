@@ -18,6 +18,7 @@ ENV/
 # details. Regenerate them; do not check them in.
 data/
 out/
+scan_stderr.log
 *.sqlite3
 *.sqlite3-wal
 *.sqlite3-shm

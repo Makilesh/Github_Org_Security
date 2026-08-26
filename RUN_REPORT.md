@@ -34,19 +34,23 @@ python -m pytest -q
 ```
 
 ```
-........................................................................ [ 53%]
-..............................................................           [100%]
-134 passed in 0.25s
+........................................................................ [ 52%]
+.................................................................        [100%]
+137 passed in 0.24s
 ```
 
-**134 tests, 0.25 seconds.** They cover:
+**137 tests, 0.24 seconds.** They cover:
 
 | File | What it pins |
 | ---- | ------------ |
-| `tests/test_score.py` (66) | The scoring arithmetic against hand-computed values, decay behaviour, risk ordering, and every NEVER-FLAG rule |
-| `tests/test_pipeline.py` (33) | The whole fixture org end-to-end: who is flagged, in exactly what order, who is excluded and why, plus database idempotency |
-| `tests/test_client.py` (29) | Rate-limit pauses, `Retry-After`, 409/403/404 handling, ETag 304s, cursor pagination, GraphQL error types |
+| `tests/test_score.py` (69) | The scoring arithmetic against hand-computed values, decay behaviour, risk ordering, every NEVER-FLAG rule, and the remediation advice for team-inherited and archived grants |
+| `tests/test_client.py` (33) | Rate-limit pauses, `Retry-After`, 409/403/404 handling, ETag 304s, cursor pagination, GraphQL error types |
+| `tests/test_pipeline.py` (29) | The whole fixture org end-to-end: who is flagged, in exactly what order, who is excluded and why, plus database idempotency |
 | `tests/test_access.py` (6) | A refused collaborator listing is reported, never rendered as "nobody has access" |
+
+The same suite runs in CI on Python 3.11 and 3.12, followed by a full `--demo`
+run whose findings are asserted against the numbers published in Step 3 below —
+so this report cannot silently drift from the code.
 
 The scoring tests assert exact arithmetic, not plausibility — for example that
 `activity_score(commits=10)` equals `7.1936858`, which is `3.0 × ln(11)` computed

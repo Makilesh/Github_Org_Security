@@ -305,6 +305,14 @@ MATURE_REPO = RepoInput(
     created_at=datetime(2021, 3, 4, tzinfo=timezone.utc), contributor_count=5,
 )
 
+# Same repo, archived. Archiving must change the remediation advice and
+# nothing else - it is not a reason to stop assessing the repo.
+ARCHIVED_REPO = RepoInput(
+    repo_id=102, full_name="acme/legacy-etl",
+    created_at=datetime(2019, 1, 22, tzinfo=timezone.utc), contributor_count=5,
+    is_archived=True,
+)
+
 
 def member(login, permission, **kw) -> MemberInput:
     return MemberInput(login=login, permission=permission, **kw)
@@ -385,6 +393,45 @@ class TestAssessRepo:
         flag = result.flagged[0]
         assert not flag.is_team_only
         assert "this repo alone" in flag.removal_note
+
+    def test_archived_repo_note_does_not_tell_you_to_revoke_on_the_repo(self):
+        """GitHub refuses collaborator changes on an archived repo.
+
+        Advising "revoke this on the repo" there sends a reviewer to a settings
+        page that will not let them do it, so the note has to say otherwise.
+        """
+        result = assess_repo(
+            ARCHIVED_REPO,
+            [MemberInput(login="sam-stale", permission="admin", is_direct=True)],
+            now=NOW, cfg=CFG,
+        )
+        flag = result.flagged[0]
+        assert flag.repo_archived
+        assert "archived" in flag.removal_note
+        assert "org or team level" in flag.removal_note
+
+    def test_archived_note_also_applies_to_team_inherited_access(self):
+        result = assess_repo(
+            ARCHIVED_REPO,
+            [MemberInput(login="maya-platform", permission="maintain", is_team=True,
+                         teams=("Data Engineering",))],
+            now=NOW, cfg=CFG,
+        )
+        flag = result.flagged[0]
+        assert "Data Engineering" in flag.removal_note      # team advice survives
+        assert "archived" in flag.removal_note              # and is added to
+
+    def test_archiving_changes_advice_but_never_the_score(self):
+        """Stale access on an archived repo is just as live - only harder to remove."""
+        live = assess_repo(
+            MATURE_REPO, [member("sam", "admin")], now=NOW, cfg=CFG,
+        ).flagged[0]
+        archived = assess_repo(
+            ARCHIVED_REPO, [member("sam", "admin")], now=NOW, cfg=CFG,
+        ).flagged[0]
+        assert live.score == archived.score
+        assert live.risk == archived.risk
+        assert live.removal_note != archived.removal_note
 
     def test_threshold_boundary_is_strict_less_than(self):
         cfg = ScoringConfig(threshold=2.0794415416798357)  # exactly one commit
