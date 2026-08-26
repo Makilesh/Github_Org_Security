@@ -282,7 +282,18 @@ because nothing was ever stored, for every subsequent run too. It now checks
 the clearest argument in the project for testing the HTTP layer against a mock
 transport rather than assuming it works.
 
-**4. The report's date filters used the wall clock.** Every "N days ago" in the
+**4. A refused access listing rendered as "nobody has access".**
+Found by pointing the scanner at a real token that lacked repository
+`Administration: read`. The collaborator listings returned 403, which the code
+treated as an allowed-empty result, so the dashboard would have stated
+confidently that no one had access to any repository. For a security report
+that is the worst possible failure: a wrong answer delivered with confidence.
+The three listings are now read through a helper that captures the refusal,
+`AccessSnapshot.complete` distinguishes "empty" from "unreadable", and the
+dashboard leads with a red banner naming every repository whose access could
+not be read. `tests/test_access.py` covers it.
+
+**5. The report's date filters used the wall clock.** Every "N days ago" in the
 template called `datetime.now()` instead of the run's timestamp, so the demo —
 whose whole purpose is reproducible output — would have drifted day to day, and
 the suggestion table could disagree with itself by one day. The filters are now
@@ -399,9 +410,13 @@ producing this documentation.
 - **The ETag cache bug** (section 8, item 3) was in AI-drafted code and was
   caught by running the tests, not by reading them. It would have silently
   disabled caching on every fresh run.
-- **The wall-clock bug in the report filters** (section 8, item 4) was likewise
+- **The wall-clock bug in the report filters** (section 8, item 5) was likewise
   AI-drafted and caught by comparing two numbers on the rendered page that
   disagreed by one day.
+- **The silent-empty-access bug** (section 8, item 4) was only found by running
+  against a real token with incomplete permissions. No unit test would have
+  caught it, because the code did exactly what it was written to do — the
+  mistake was in deciding that a 403 was an acceptable empty result.
 - **The advisory primary key** was changed away from the specified `ghsa_id`
   after checking a real Dependabot payload and finding the multi-manifest case.
 - **The expected ranking in `tests/test_pipeline.py` was computed by hand** and
@@ -411,8 +426,9 @@ producing this documentation.
   in the suite.
 
 **The honest summary:** the assistant was substantially faster at producing
-correct-shaped code than I would have been alone, and produced two bugs that
-looked completely reasonable on the page and were only caught by executing the
-tests against a mock transport. Both were in error-handling paths that never
-fire in a happy-path manual run. That is the argument for the test suite, and it
+correct-shaped code than I would have been alone, and produced three bugs that
+looked completely reasonable on the page. Two were caught by executing the tests
+against a mock transport; the third only surfaced when the tool was pointed at a
+real token with incomplete permissions. All three were in error-handling paths
+that never fire in a happy-path manual run. That is the argument for the test suite, and it
 is why I would not ship AI-drafted infrastructure code without one.

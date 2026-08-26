@@ -259,6 +259,10 @@ class ExclusionReason:
     ARCHIVED_REPO = "repo_archived"   # tagged only; not an exclusion by default
     FORK_REPO = "repo_fork"
     EMPTY_REPO = "repo_empty"
+    #: The collaborator listing was refused. Recorded loudly, because an empty
+    #: access list that is really a permission error would otherwise read as
+    #: "nobody has access here" - a confident, wrong, and dangerous answer.
+    ACCESS_UNREADABLE = "access_unreadable"
 
 
 EXCLUSION_LABELS: dict[str, str] = {
@@ -270,6 +274,8 @@ EXCLUSION_LABELS: dict[str, str] = {
     ExclusionReason.ARCHIVED_REPO: "Repository is archived",
     ExclusionReason.FORK_REPO: "Repository is a fork",
     ExclusionReason.EMPTY_REPO: "Repository is empty (no commits)",
+    ExclusionReason.ACCESS_UNREADABLE:
+        "Access list could not be read - results for this repository are incomplete",
 }
 
 

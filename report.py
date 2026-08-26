@@ -401,6 +401,21 @@ def build_context(db: Database, run_id: int, *, now: datetime | None = None) -> 
     scored_people = db.query_one(
         "SELECT COUNT(DISTINCT login) AS n FROM scores WHERE run_id = ?", (run_id,)
     )["n"]
+
+    # Data gaps are promoted to the top of the page, not buried. A report that
+    # silently omits what it could not read is worse than no report.
+    gaps = [
+        {"repo": row["full_name"], "detail": row["detail"]}
+        for row in db.query(
+            """
+            SELECT r.full_name, e.detail
+              FROM exclusions e JOIN repos r ON r.repo_id = e.repo_id
+             WHERE e.run_id = ? AND e.reason = ?
+             ORDER BY r.full_name
+            """,
+            (run_id, config.ExclusionReason.ACCESS_UNREADABLE),
+        )
+    ]
     admin_flags = sum(1 for s in suggestions if s["permission"].lower() == "admin")
     counts = db.run_counts(run_id)
 
@@ -422,6 +437,7 @@ def build_context(db: Database, run_id: int, *, now: datetime | None = None) -> 
             "people_reviewed": scored_people,
             "excluded": exclusions["member_total"],
         },
+        "data_gaps": gaps,
         "advisories": advisories,
         "repos": repos,
         "suggestions": suggestions,

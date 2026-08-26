@@ -48,7 +48,10 @@ def setup_logging(verbose: bool, quiet: bool) -> None:
         datefmt="%H:%M:%S",
         stream=sys.stderr,      # stdout stays clean for --json
     )
-    logging.getLogger("httpx").setLevel(logging.WARNING)
+    # httpcore logs every socket operation at DEBUG, which buries our own -v
+    # output completely. Keep the transport quiet unless it actually fails.
+    for noisy in ("httpx", "httpcore", "httpcore.http11", "httpcore.connection"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
 # --------------------------------------------------------------------------
@@ -204,6 +207,13 @@ def run_live(args: argparse.Namespace, db: Database) -> tuple[int, dict[str, Any
 
         owners = fetch_org_members(gh, db, run_id, org)
         repos = fetch_repos(gh, org)
+        if not repos:
+            log.error(
+                "No repositories are visible in '%s'. Either the organization has "
+                "none, or this token is not scoped to it (a fine-grained PAT must "
+                "be created with '%s' as the resource owner, not your user account).",
+                org, org,
+            )
         scanning, skipped = register_repos(db, run_id, repos)
         log.info("Registered %d repos (%d to scan, %d skipped)",
                  len(repos), scanning, skipped)

@@ -235,11 +235,70 @@ class AccessEntry:
         return "; ".join(parts) or "unknown"
 
 
+@dataclass
+class AccessSnapshot:
+    """The access picture for one repo, plus anything we could not read.
+
+    `errors` is the important field. An empty `entries` dict means either
+    "nobody has access" or "the token was refused", and those must never look
+    the same in a security report.
+    """
+
+    entries: dict[str, AccessEntry] = field(default_factory=dict)
+    errors: list[str] = field(default_factory=list)
+
+    @property
+    def complete(self) -> bool:
+        return not self.errors
+
+    def __iter__(self):
+        return iter(self.entries.values())
+
+    def __len__(self) -> int:
+        return len(self.entries)
+
+
+def _list_collaborators(
+    gh: GitHubClient, full_name: str, affiliation: str
+) -> tuple[list[dict[str, Any]], str | None]:
+    """One collaborator listing. Returns (items, error).
+
+    Deliberately does not use `paginate`: that helper turns an allowed 403 into
+    an empty iterator, which is exactly the ambiguity this function exists to
+    remove. Here the refusal is captured and returned.
+    """
+    items: list[dict[str, Any]] = []
+    url: str | None = f"/repos/{full_name}/collaborators"
+    params: dict[str, Any] | None = {
+        "affiliation": affiliation, "per_page": config.PER_PAGE
+    }
+
+    while url:
+        result = gh.get(url, params, allow_403=True, allow_404=True)
+        params = None                       # the next URL already carries them
+
+        if result.status == 403:
+            return [], (
+                f"'{affiliation}' collaborator listing refused (HTTP 403). The token "
+                f"is missing Repository permission 'Administration: read'."
+            )
+        if result.status == 404:
+            return [], f"'{affiliation}' collaborator listing not found (HTTP 404)."
+
+        data = result.data or []
+        if not isinstance(data, list):
+            return items, f"'{affiliation}' listing returned {type(data).__name__}, expected a list."
+        items.extend(data)
+        url = result.next_url
+
+    return items, None
+
+
 def fetch_collaborators(
     gh: GitHubClient,
     record: RepoRecord,
     team_index: TeamIndex | None = None,
-) -> dict[str, AccessEntry]:
+) -> AccessSnapshot:
     """Build the access picture for one repo, keyed by lowercased login.
 
     Three REST listings plus (optionally) the repo's team list:
@@ -258,7 +317,8 @@ def fetch_collaborators(
     claiming to know the team component for that person would be a guess.
     """
     full_name = record.full_name
-    entries: dict[str, AccessEntry] = {}
+    snapshot = AccessSnapshot()
+    entries = snapshot.entries
 
     def entry_for(collab: Mapping[str, Any]) -> AccessEntry | None:
         login = str(collab.get("login", ""))
@@ -278,30 +338,30 @@ def fetch_collaborators(
         return entry
 
     direct_logins: set[str] = set()
-    for collab in gh.paginate(
-        f"/repos/{full_name}/collaborators", {"affiliation": "direct"},
-        allow_403=True, allow_404=True,
-    ):
+    direct, error = _list_collaborators(gh, full_name, "direct")
+    if error:
+        snapshot.errors.append(error)
+    for collab in direct:
         entry = entry_for(collab)
         if entry is None:
             continue
         entry.direct = permission_from_payload(collab)
         direct_logins.add(entry.login.lower())
 
-    for collab in gh.paginate(
-        f"/repos/{full_name}/collaborators", {"affiliation": "outside"},
-        allow_403=True, allow_404=True,
-    ):
+    outside, error = _list_collaborators(gh, full_name, "outside")
+    if error:
+        snapshot.errors.append(error)
+    for collab in outside:
         entry = entry_for(collab)
         if entry is None:
             continue
         entry.outside = permission_from_payload(collab)
 
     inherited: dict[str, str | None] = {}
-    for collab in gh.paginate(
-        f"/repos/{full_name}/collaborators", {"affiliation": "all"},
-        allow_403=True, allow_404=True,
-    ):
+    everyone, error = _list_collaborators(gh, full_name, "all")
+    if error:
+        snapshot.errors.append(error)
+    for collab in everyone:
         login = str(collab.get("login", "")).lower()
         if not login or login in direct_logins:
             continue
@@ -323,11 +383,15 @@ def fetch_collaborators(
                     if name not in entries[login].teams:
                         entries[login].teams.append(name)
 
-    return entries
+    if snapshot.errors:
+        log.warning("Access data for %s is incomplete: %s",
+                    full_name, " ".join(snapshot.errors))
+
+    return snapshot
 
 
 def store_collaborators(
-    db: Database, run_id: int, repo_id: int, entries: Mapping[str, AccessEntry]
+    db: Database, run_id: int, repo_id: int, snapshot: AccessSnapshot
 ) -> None:
     """Replace this repo's access rows atomically.
 
@@ -337,7 +401,7 @@ def store_collaborators(
     """
     with db.transaction():
         db.clear_collaborators(repo_id)
-        for entry in entries.values():
+        for entry in snapshot.entries.values():
             teams = ", ".join(entry.teams) if entry.teams else None
             if entry.is_direct:
                 db.upsert_collaborator(
@@ -725,7 +789,7 @@ def collect_repo(
     team_index: TeamIndex | None = None,
     *,
     since: datetime | None = None,
-) -> tuple[dict[str, AccessEntry], RepoActivity]:
+) -> tuple[AccessSnapshot, RepoActivity]:
     """Fetch and store access + contribution data for one repo.
 
     Each stage is marked done as it completes, so a crash resumes at the next
@@ -733,10 +797,21 @@ def collect_repo(
     """
     since = since or window_start()
 
-    entries = fetch_collaborators(gh, record, team_index)
-    store_collaborators(db, run_id, record.repo_id, entries)
-    db.mark_stage(run_id, record.repo_id, Stage.COLLABORATORS,
-                  detail=f"{len(entries)} with access")
+    access = fetch_collaborators(gh, record, team_index)
+    store_collaborators(db, run_id, record.repo_id, access)
+
+    if access.errors:
+        # Never let a refused listing render as "nobody has access".
+        db.upsert_exclusion(
+            run_id, record.repo_id, "*", config.ExclusionReason.ACCESS_UNREADABLE,
+            detail=" ".join(access.errors),
+        )
+    db.mark_stage(
+        run_id, record.repo_id, Stage.COLLABORATORS,
+        status="error" if access.errors else "done",
+        detail=" ".join(access.errors) if access.errors
+               else f"{len(access)} with access",
+    )
 
     activity = fetch_repo_activity(gh, record, since=since)
 
@@ -747,7 +822,7 @@ def collect_repo(
             total_commits=activity.total_commits,
             unattributed_commits=activity.unattributed_commits,
             contributor_count=activity.contributor_count,
-            collaborator_count=len(entries),
+            collaborator_count=len(access),
             window_start=_iso(since),
         )
         if activity.is_empty:
@@ -762,4 +837,4 @@ def collect_repo(
                   f"{activity.total_commits} commits, {activity.contributor_count} contributors",
         )
 
-    return entries, activity
+    return access, activity
