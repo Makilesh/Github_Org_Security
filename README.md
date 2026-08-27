@@ -25,9 +25,15 @@ makes it a stable reference when comparing your run to ours.
 
 **Don't want to run anything?** A generated copy is committed at
 [docs/demo_dashboard.html](docs/demo_dashboard.html) — open it straight from a
-clone. It is the byte-for-byte output of the command above, and it contains
-only synthetic fixture data, which is why it is the one scan result in this
-repo that is safe to commit.
+clone. It is the output of the command above, and it contains only synthetic
+fixture data, which is why it is the one scan result in this repo that is safe
+to commit.
+
+Regenerating it reproduces every finding, score and date exactly — the fixture
+pins its own clock, so the report does not drift. Two lines do differ: the run
+number and the "generated at" timestamp, which record when *your* run happened
+and are meant to vary. Diff the two files and those are the only changes you
+will see.
 
 To turn it into a PDF, open it and use the browser's **Print → Save as PDF**.
 The page carries a print stylesheet that expands every collapsed repository

@@ -437,7 +437,9 @@ did not also build it there: it would demonstrate the same judgment twice.
   differs for team-inherited grants.
 - All-time last-commit lookup for flagged members, bounded by suggestion count.
 - Determinism: stable tie-breaks in the ranking so two runs over unchanged data
-  produce a byte-identical report, making it diffable week over week.
+  produce an identical report apart from the run number and generation
+  timestamp, which exist precisely to vary. That makes the output diffable
+  week over week: anything that changes is a real change in the organization.
 - A weekly scheduled scan that notifies on findings and revokes nothing, plus CI
   that runs the suite on two Python versions and then fails the build if a
   `--demo` run stops producing the findings this documentation claims.
