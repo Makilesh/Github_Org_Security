@@ -178,9 +178,15 @@ CREATE TABLE IF NOT EXISTS collaborators (
     is_direct               INTEGER NOT NULL DEFAULT 0,
     is_outside              INTEGER NOT NULL DEFAULT 0,
     is_team                 INTEGER NOT NULL DEFAULT 0,
+    -- Organization base permission: the org-wide default that grants every
+    -- member access to every repo. Not a team grant and not a repo grant, and
+    -- it is remediated in org settings, so it gets its own column instead of
+    -- being misfiled as team-inherited.
+    is_base                 INTEGER NOT NULL DEFAULT 0,
     permission_direct       TEXT,
     permission_outside      TEXT,
     permission_team         TEXT,
+    permission_base         TEXT,
     team_names              TEXT,           -- comma separated; which teams grant it
     effective_permission    TEXT,
     role_name               TEXT,
@@ -600,7 +606,7 @@ class Database:
 
     def upsert_collaborator(
         self, run_id: int, repo_id: int, login: str, *,
-        affiliation: str,                      # 'direct' | 'outside' | 'team'
+        affiliation: str,          # 'direct' | 'outside' | 'team' | 'base'
         permission: str | None,
         user_id: int | None = None,
         user_type: str | None = None,
@@ -614,14 +620,16 @@ class Database:
         each set their own flag and permission column; a member holding two of
         them keeps both, visibly, on the same row.
         """
-        if affiliation not in ("direct", "outside", "team"):
+        if affiliation not in ("direct", "outside", "team", "base"):
             raise ValueError(f"unknown affiliation: {affiliation!r}")
 
-        flag_col = {"direct": "is_direct", "outside": "is_outside", "team": "is_team"}[affiliation]
+        flag_col = {"direct": "is_direct", "outside": "is_outside",
+                    "team": "is_team", "base": "is_base"}[affiliation]
         perm_col = {
             "direct": "permission_direct",
             "outside": "permission_outside",
             "team": "permission_team",
+            "base": "permission_base",
         }[affiliation]
 
         self.execute(
@@ -800,9 +808,9 @@ class Database:
             """
             SELECT
                 COALESCE(c.login, k.login)      AS login,
-                c.user_type, c.is_direct, c.is_outside, c.is_team,
+                c.user_type, c.is_direct, c.is_outside, c.is_team, c.is_base,
                 c.permission_direct, c.permission_outside, c.permission_team,
-                c.team_names, c.effective_permission,
+                c.permission_base, c.team_names, c.effective_permission,
                 COALESCE(k.commits, 0)          AS commits,
                 COALESCE(k.prs_opened, 0)       AS prs_opened,
                 COALESCE(k.prs_merged, 0)       AS prs_merged,
@@ -815,7 +823,7 @@ class Database:
              WHERE c.repo_id = ?
             UNION
             SELECT
-                k.login, NULL, 0, 0, 0, NULL, NULL, NULL, NULL, NULL,
+                k.login, NULL, 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL,
                 k.commits, k.prs_opened, k.prs_merged, k.reviews,
                 k.last_commit_at, k.last_pr_at, k.last_review_at,
                 k.last_activity_at, k.last_commit_ever

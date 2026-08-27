@@ -203,6 +203,7 @@ class AccessEntry:
     direct: str | None = None       # permission granted on this repo directly
     outside: str | None = None      # permission held as an outside collaborator
     team: str | None = None         # permission inherited from a team
+    base: str | None = None         # permission from the org-wide base setting
     teams: list[str] = field(default_factory=list)
 
     @property
@@ -218,8 +219,12 @@ class AccessEntry:
         return self.team is not None
 
     @property
+    def is_base(self) -> bool:
+        return self.base is not None
+
+    @property
     def effective(self) -> str | None:
-        return strongest_permission(self.direct, self.outside, self.team)
+        return strongest_permission(self.direct, self.outside, self.team, self.base)
 
     @property
     def access_label(self) -> str:
@@ -232,6 +237,8 @@ class AccessEntry:
         if self.is_team:
             via = ", ".join(self.teams) if self.teams else "a team"
             parts.append(f"via {via} ({self.team})")
+        if self.is_base:
+            parts.append(f"organization base permission ({self.base})")
         return "; ".join(parts) or "unknown"
 
 
@@ -298,6 +305,9 @@ def fetch_collaborators(
     gh: GitHubClient,
     record: RepoRecord,
     team_index: TeamIndex | None = None,
+    *,
+    org_base_permission: str | None = None,
+    org_members: set[str] | None = None,
 ) -> AccessSnapshot:
     """Build the access picture for one repo, keyed by lowercased login.
 
@@ -310,6 +320,14 @@ def fetch_collaborators(
       no `affiliation=team`, so this difference is the only way to isolate it.
     * the repo's team list, intersected with the org team index, turns that
       into a named team.
+
+    A fourth path exists and is easy to get wrong. An organization's **base
+    permission** (Settings -> Member privileges) can grant every member access
+    to every repository. Those people appear in `all` but not in `direct` and
+    belong to no team, so a naive `all - direct` rule mislabels them as
+    team-inherited. They are separated here, because the remediation is
+    completely different: it is one org-wide setting, not a team change, and it
+    affects every member and every repository at once.
 
     Known limitation, stated rather than hidden: a member holding *both* a
     direct grant and team access is reported as direct. The REST listing
@@ -371,7 +389,9 @@ def fetch_collaborators(
         entry.team = permission_from_payload(collab)
         inherited[login] = entry.team
 
-    # Name the responsible team(s) where we can.
+    # Work out which of the inherited grants really come from a team, and name
+    # the team. Anything left over is the organization base permission.
+    explained_by_team: set[str] = set()
     if inherited and team_index and team_index.available:
         for team in fetch_repo_teams(gh, full_name):
             slug = str(team.get("slug", ""))
@@ -380,8 +400,22 @@ def fetch_collaborators(
             name = team_index.name_for(slug)
             for login in team_index.logins_for(slug):
                 if login in inherited and login in entries:
+                    explained_by_team.add(login)
                     if name not in entries[login].teams:
                         entries[login].teams.append(name)
+
+    base_permission = normalise_permission(org_base_permission)
+    if base_permission and base_permission != "none":
+        members = {m.lower() for m in (org_members or set())}
+        for login, permission in inherited.items():
+            if login in explained_by_team:
+                continue
+            if members and login not in members:
+                continue
+            entry = entries[login]
+            # Reclassify: this is an org-wide default, not a team grant.
+            entry.team = None
+            entry.base = permission or base_permission
 
     if snapshot.errors:
         log.warning("Access data for %s is incomplete: %s",
@@ -423,6 +457,13 @@ def store_collaborators(
                     permission=entry.team, user_id=entry.user_id,
                     user_type=entry.user_type, role_name=entry.role_name,
                     site_admin=entry.site_admin, team_names=teams,
+                )
+            if entry.is_base:
+                db.upsert_collaborator(
+                    run_id, repo_id, entry.login, affiliation="base",
+                    permission=entry.base, user_id=entry.user_id,
+                    user_type=entry.user_type, role_name=entry.role_name,
+                    site_admin=entry.site_admin,
                 )
             db.set_effective_permission(repo_id, entry.login, entry.effective)
 
@@ -789,6 +830,8 @@ def collect_repo(
     team_index: TeamIndex | None = None,
     *,
     since: datetime | None = None,
+    org_base_permission: str | None = None,
+    org_members: set[str] | None = None,
 ) -> tuple[AccessSnapshot, RepoActivity]:
     """Fetch and store access + contribution data for one repo.
 
@@ -797,7 +840,10 @@ def collect_repo(
     """
     since = since or window_start()
 
-    access = fetch_collaborators(gh, record, team_index)
+    access = fetch_collaborators(
+        gh, record, team_index,
+        org_base_permission=org_base_permission, org_members=org_members,
+    )
     store_collaborators(db, run_id, record.repo_id, access)
 
     if access.errors:
