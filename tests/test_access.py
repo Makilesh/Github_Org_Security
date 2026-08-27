@@ -8,7 +8,6 @@ result rendered confidently. These tests were written after a live token with
 from __future__ import annotations
 
 import httpx
-import pytest
 
 import config
 from client import GitHubClient
@@ -132,3 +131,72 @@ class TestDashboardSurfacesTheGap:
         assert len(context["data_gaps"]) == 1
         assert context["data_gaps"][0]["repo"] == "acme/api"
         assert "403" in context["data_gaps"][0]["detail"]
+
+
+class TestOrgBasePermission:
+    """An org-wide base permission is not a team grant.
+
+    Found on a real organization: `default_repository_permission = "read"`
+    puts every member into the `all` collaborator listing without any team
+    existing, and the naive `all - direct` rule labelled them "team-inherited".
+    The remediation is completely different, so the two must not be conflated.
+    """
+
+    def _handler(self, request):
+        affiliation = request.url.params.get("affiliation")
+        if affiliation == "direct":
+            return httpx.Response(200, json=[collaborator("owner", "admin")],
+                                  headers={"x-ratelimit-remaining": "4000"})
+        if affiliation == "outside":
+            return httpx.Response(200, json=[], headers={"x-ratelimit-remaining": "4000"})
+        return httpx.Response(
+            200,
+            json=[collaborator("owner", "admin"), collaborator("member", "read")],
+            headers={"x-ratelimit-remaining": "4000"},
+        )
+
+    def test_member_without_a_team_is_base_permission_not_team(self):
+        access = fetch_collaborators(
+            make_client(self._handler), decide_repo(REPO),
+            org_base_permission="read", org_members={"owner", "member"},
+        )
+        entry = access.entries["member"]
+        assert entry.is_base, "org base permission was not detected"
+        assert not entry.is_team, "base permission must not be filed as a team grant"
+        assert entry.base == "read"
+        assert "organization base permission" in entry.access_label
+
+    def test_base_permission_none_leaves_it_as_team_inherited(self):
+        """With no base permission configured, `all - direct` really is a team."""
+        access = fetch_collaborators(
+            make_client(self._handler), decide_repo(REPO),
+            org_base_permission="none", org_members={"owner", "member"},
+        )
+        assert access.entries["member"].is_team
+        assert not access.entries["member"].is_base
+
+    def test_outside_collaborator_is_not_swept_up_as_base(self):
+        """Base permission applies to org members only."""
+        access = fetch_collaborators(
+            make_client(self._handler), decide_repo(REPO),
+            org_base_permission="read", org_members={"owner"},   # 'member' is not one
+        )
+        entry = access.entries["member"]
+        assert not entry.is_base
+        assert entry.is_team
+
+    def test_remediation_advice_points_at_org_settings(self):
+        from score import remediation_note
+
+        note = remediation_note(is_team_only=False, is_base_only=True)
+        assert "Member privileges" in note
+        assert "cannot be revoked here" in note
+        assert "team" not in note.lower().replace("team level", "")
+
+    def test_base_permission_beats_archived_advice(self):
+        """Telling someone to unarchive a repo cannot fix an org-wide setting."""
+        from score import remediation_note
+
+        note = remediation_note(is_team_only=False, is_base_only=True, is_archived=True)
+        assert "unarchive" not in note
+        assert "Member privileges" in note
