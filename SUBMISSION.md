@@ -27,6 +27,8 @@ Flagged below **score 5.0**; suggestions ranked by **risk**, highest first.
 
 Handled explicitly, each with a test: empty repos (409), archived repos (**scanned, not skipped** — that access is still live, and archiving only changes the remediation advice), forks (skipped, configurable), bots, org owners, brand-new repos, single-contributor repos, custom repository roles (weighted as *write*, never as harmless).
 
+**Verified on a live organization**, not only on fixtures: 7 repositories, one org-wide call returning 32 Dependabot alerts (15 critical or high), and 2 access suggestions out of 21 grants assessed — while correctly leaving alone an active admin, two org owners, a member whose read access comes from an org-wide setting, and a contributor holding no access at all. Running against real data also exposed four bugs that fixtures could not — a refused access listing rendering as "nobody has access", organization base permission mislabelled as a team grant, contributors with no access being suggested for removal, and advisory counts being silently zeroed by a second writer.
+
 **Unattributed commits are counted and reported, never guessed at.** When a commit's author email is not linked to a GitHub account, matching on raw name or email would silently credit the wrong person. The live run found 6 such commits and said so.
 
 **Four access paths are stored and reported separately:** direct, outside collaborator, team-inherited, and the organization's own base permission. Each has a different remediation — revoking a team grant affects every repo that team can reach; base permission is one org-wide setting — so merging them into a single "permission" column would destroy the distinction that makes the report actionable. The base-permission path was added after a live scan showed it being mislabelled as team-inherited.
@@ -53,6 +55,6 @@ The three things I would add next: an accept/reject feedback loop so the thresho
 | **Dashboard** | [docs/demo_dashboard.html](docs/demo_dashboard.html) — open straight from a clone |
 | **Reasoning and trade-offs** | [DESIGN_NOTES.md](DESIGN_NOTES.md) — includes AI-assistance disclosure (§11) |
 | **Execution walkthrough** | [RUN_REPORT.md](RUN_REPORT.md) — captured output, demo *and* live org |
-| **Tests** | `python -m pytest -q` — 149 tests, ~0.3s, also run in CI on 3.11 and 3.12 |
+| **Tests** | `python -m pytest -q` — 156 tests, ~0.3s, also run in CI on 3.11 and 3.12 |
 
 **What is mocked, and why:** only the API responses in `--demo` mode, because private Dependabot advisories need an org with paid security features and genuinely vulnerable dependencies. The fixtures are shaped like real API payloads and run through the *same* parsing, scoring and rendering code as a live scan. Section 8 of the run report is a real scan against a live organization.

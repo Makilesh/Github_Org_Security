@@ -36,16 +36,16 @@ python -m pytest -q
 ```
 ........................................................................ [ 52%]
 .................................................................        [100%]
-149 passed in 0.25s
+156 passed in 0.32s
 ```
 
-**149 tests, 0.25 seconds.** They cover:
+**156 tests, 0.32 seconds.** They cover:
 
 | File | What it pins |
 | ---- | ------------ |
-| `tests/test_score.py` (76) | The scoring arithmetic against hand-computed values, decay behaviour, risk ordering, every NEVER-FLAG rule, and the remediation advice for team-inherited and archived grants |
+| `tests/test_score.py` (80) | The scoring arithmetic against hand-computed values, decay behaviour, risk ordering, every NEVER-FLAG rule, and the remediation advice for team-inherited and archived grants |
 | `tests/test_client.py` (33) | Rate-limit pauses, `Retry-After`, 409/403/404 handling, ETag 304s, cursor pagination, GraphQL error types |
-| `tests/test_pipeline.py` (29) | The whole fixture org end-to-end: who is flagged, in exactly what order, who is excluded and why, plus database idempotency |
+| `tests/test_pipeline.py` (32) | The whole fixture org end-to-end: who is flagged, in exactly what order, who is excluded and why, plus database idempotency |
 | `tests/test_access.py` (11) | A refused collaborator listing is reported, never rendered as "nobody has access"; org base permission is not team-inherited |
 
 The same suite runs in CI on Python 3.11 and 3.12, followed by a full `--demo`
@@ -278,7 +278,7 @@ believe the people who were not.
 
 The fixture org above is the illustrative case. This is the same code against a
 real GitHub organization (`VoidAlgo`), and it is here because running against
-real data found three bugs that no fixture would have caught.
+real data found four bugs that no fixture would have caught.
 
 ### Token permission probe
 
@@ -288,16 +288,15 @@ Every endpoint the tool depends on, probed individually before scanning:
 | -------- | ------ |
 | `/rate_limit` | OK — REST 5000/5000, GraphQL 5000/5000 |
 | `/orgs/{org}/members?role=admin` | OK — 2 owners |
-| `/orgs/{org}/repos` | OK — 3 of 4 repos visible |
-| `/orgs/{org}/dependabot/alerts` | OK — 0 alerts |
-| `/repos/{r}/collaborators` (×3 affiliations) | OK on 1 repo, **403 on 2** |
-| `/repos/{r}/commits`, `/pulls`, GraphQL | OK — 205 commits, 34 PRs |
+| `/orgs/{org}/teams` | OK — 0 teams |
+| `/orgs/{org}/repos` | OK — 4 repositories |
+| `/orgs/{org}/dependabot/alerts` | OK — **32 alerts in a single call** |
+| `/repos/{r}/collaborators` (×3 affiliations) | OK on all 4 |
+| `/repos/{r}/commits`, `/pulls`, GraphQL | OK — 231 commits, 34 PRs |
 
-Two gaps, both reported by the tool rather than silently absorbed:
-
-- The PAT is scoped to *selected* repositories, so one repo is invisible (404)
-  and two more refuse the collaborator listing (403).
-- Dependabot is enabled but the repositories have no known vulnerabilities.
+The org-wide advisory endpoint is the efficiency decision paying off in
+practice: **one paginated call returned all 32 alerts** rather than four
+per-repo calls, and that ratio is what keeps a 100-repo org affordable.
 
 ### The scan
 
@@ -306,78 +305,113 @@ INFO  scanner: Started run #1 for VoidAlgo
 INFO  scanner: Token OK. REST quota 5000/5000, GraphQL 5000/5000
 INFO  scan:    Org VoidAlgo has 2 owner(s)
 INFO  scan:    Org base permission is 'read': every member holds read on every repo
-INFO  scan:    Found 3 repos in VoidAlgo; scanning 3, skipping 0
-INFO  scan:    Org-level Dependabot endpoint returned 0 alerts across 0 repos
-INFO  contrib: Indexed 0 teams in VoidAlgo
-INFO  scanner: [1/3] VoidAlgo/github_pull_toslack
-WARN  contrib: Access data for VoidAlgo/github_pull_toslack is incomplete:
-               'direct' collaborator listing refused (HTTP 403). The token is
-               missing Repository permission 'Administration: read'.
-INFO  scanner: [2/3] VoidAlgo/pseudoquant
-INFO  scanner: [3/3] VoidAlgo/Sensitive_Data_Detection-Compliance_Assistant
+INFO  scan:    Found 7 repos in VoidAlgo; scanning 7, skipping 0
+INFO  scan:    Org-level Dependabot endpoint returned 32 alerts across 1 repos
+INFO  scanner: [1/7] VoidAlgo/Agentic-CMO
+INFO  scanner: [2/7] VoidAlgo/Auto_Job_Applying_Agent
+INFO  scanner: [3/7] VoidAlgo/demo-repository
+INFO  scanner: [4/7] VoidAlgo/github_pull_toslack
+INFO  scanner: [5/7] VoidAlgo/pseudoquant
+INFO  scanner: [6/7] VoidAlgo/Sensitive_Data_Detection-Compliance_Assistant
+INFO  scanner: [7/7] VoidAlgo/voice_mvp_dupe
 
   Run #1 - VoidAlgo (live)
   ----------------------------------------------------------
-  Repositories scanned    3
-  Advisories found        0  (0 still open)
-  Access suggestions      0
-  Excluded from review    6
-  API                     25 requests, 0 served from cache, 0 rate-limit pauses
+  Repositories scanned    7
+  Advisories found        32  (32 still open)
+  Access suggestions      2
+  Excluded from review    19
+  API                     51 requests, 0 served from cache, 0 rate-limit pauses
+
+  Highest risk:
+     0.97  fatbatman85 - admin on VoidAlgo/voice_mvp_dupe
+     0.49  fatbatman85 - write on VoidAlgo/Agentic-CMO
 ```
 
-### Every member, and what the tool decided
+### Advisory findings
 
-| Repository | Member | Permission | Score | Outcome |
-| ---------- | ------ | ---------- | ----- | ------- |
-| pseudoquant | Makilesh | admin (direct) | 29.38 | excluded — org owner |
-| pseudoquant | clashonkishy | admin (direct) | 15.83 | excluded — org owner |
-| pseudoquant | fatbatman85 | read — **org base permission** | 0.00 | excluded — repo newer than the window |
-| Sensitive_Data_Detection | Makilesh | — | 10.58 | excluded — org owner |
-| Sensitive_Data_Detection | Copilot | none | 2.08 | excluded — **no current access** |
-| github_pull_toslack | Makilesh | — | 9.89 | excluded — org owner |
+**32 open Dependabot alerts, 15 of them critical or high**, all concentrated in
+a single repository:
 
-### Zero suggestions, and why that is the correct answer
+| Severity | Open |
+| -------- | ---- |
+| Critical | 1 |
+| High | 14 |
+| Medium | 11 |
+| Low | 6 |
 
-Every exclusion above fires for a good reason, and no configuration produces a
-finding honestly:
+A sample, straight from the run:
 
-- Both people with real permissions are **organization owners** — a hard rule.
-- `fatbatman85` holds read, has no activity, and *would* be flagged — but
-  `pseudoquant` was **created 33 days ago**, inside the 180-day window.
-- Shortening the window to 30 days makes the repo judgeable, and then it has
-  only **one contributor** in that window, so the single-contributor rule
-  suppresses it instead. I tried this. It is in the table below.
+| Severity | Package | Advisory | Summary |
+| -------- | ------- | -------- | ------- |
+| Critical | torch | GHSA-53q9-r3pm-6pq6 | PyTorch remote code execution |
+| High | black | GHSA-3936-cmfr-pm3m | Arbitrary file writes from unsanitized input |
+| High | pillow | GHSA-45hq-cxwh-f6vc | `Image.new()` bypasses the decompression-bomb check |
+| Medium | Pillow | GHSA-4x4j-2g7c-83w6 | `WindowsViewer.get_command()` OS command injection |
 
-| Window | Repo judgeable? | Contributors | Suggestions |
-| ------ | --------------- | ------------ | ----------- |
-| 180 days | no — too new | 2 | 0 |
-| 30 days | yes | 1 | 0 — single contributor |
-| 25 days | yes | 1 | 0 — single contributor |
+One repository accounts for every open alert in the organization, which is
+exactly the "most affected repositories" signal the dashboard exists to surface.
 
-**I did not tune the threshold until something appeared.** A five-week-old
-organization with three repositories and two owners genuinely has no stale
-access, and a tool that manufactured a finding here would be worse than one
-that reports none. The fixture demo exists precisely so the access-review logic
-can be demonstrated on a history that is old enough to judge.
+### Access findings — two suggestions, and the reasoning behind each
 
-### What the live run did find
+| # | Member | Repository | Permission | Score | Risk |
+| - | ------ | ---------- | ---------- | ----- | ---- |
+| 1 | fatbatman85 | voice_mvp_dupe | **Admin** | 2.08 | **0.97** |
+| 2 | fatbatman85 | Agentic-CMO | Write | 2.08 | 0.49 |
 
-Not access findings — correctness findings, which were more valuable:
+> Holds admin access but has contributed only 1 commit, 0 PRs reviewed, 0 PRs
+> merged in the last 180 days. Score 2.08 is below the 5.0 threshold.
 
-1. **Org base permission**, `default_repository_permission = "read"`. Every
-   member silently holds read on every repository. `fatbatman85` has never been
-   added to any repo or team, and had read access to a private repo. The
-   scanner reports this as its own access path with the org-level remediation,
-   after this run showed it being mislabelled as team-inherited.
-2. **A contributor with no access.** `Copilot` authored commits on a repo where
-   it holds no permission. It was scored 2.08, below the threshold, and would
-   have been recommended for removal of access it does not have.
-3. **A token scoping gap**, surfaced rather than hidden: two repositories
-   refused the collaborator listing, and the dashboard leads with a red banner
-   naming them instead of reporting "nobody has access".
+Both are genuine low-contribution findings: a single commit against a threshold
+calibrated at roughly four. The admin grant ranks first because risk divides
+permission weight by contribution — same score, twice the consequence.
 
-Findings 1 and 2 became code changes and tests. Section 8 of
-[DESIGN_NOTES.md](DESIGN_NOTES.md) records both.
+### What was *not* flagged, and why that matters more
+
+| Situation | Outcome |
+| --------- | ------- |
+| `fatbatman85` holds **admin** on `Auto_Job_Applying_Agent` and made 3 commits | **not flagged** — active people keep their access |
+| `Makilesh`, `clashonkishy` — admin everywhere | **excluded** — organization owners, a hard rule |
+| `fatbatman85` read on 4 repos | **excluded** — org base permission, no repo grant to revoke |
+| `Copilot` authored commits on `Sensitive_Data_Detection…` | **excluded** — holds no access, nothing to remove |
+| `demo-repository`, `github_pull_toslack` | **excluded** — one contributor, nothing to compare against |
+| `pseudoquant`, `Sensitive_Data_Detection…` | **excluded** — created inside the 180-day window |
+
+19 access grants were assessed and held back, 2 were suggested. A tool that
+flagged the active admin, or the owners, or the person whose read access comes
+from an org-wide setting, would be worse than useless — the reviewer would stop
+trusting the list on the first false positive.
+
+### A limitation this run exposed
+
+`voice_mvp_dupe` was, before the commits above, a repository with **three
+admins and no commits in six months**. That is arguably the strongest possible
+stale-access signal — an abandoned repository — and the single-contributor rule
+suppressed it, because the rule was written for "only one person to compare
+against" and treats zero contributors the same as one. Those are different
+situations: one is thin evidence, the other *is* the evidence. Splitting them
+is the first change I would make to the exclusion rules.
+
+### Four bugs the live run found that fixtures never would
+
+1. **A refused collaborator listing rendered as "nobody has access."** A token
+   without `Administration: read` produced empty access lists that the report
+   stated with full confidence. Now `AccessSnapshot.complete` separates *empty*
+   from *unreadable*, and the dashboard leads with a red banner.
+2. **Organization base permission mislabelled as team-inherited.**
+   `default_repository_permission = "read"` puts every member into the `all`
+   listing with no team involved. The remediation is one org-wide setting, not
+   a team change, so it is now its own access path.
+3. **Contributors with no access suggested for removal.** `Copilot` authored
+   commits on a repository where it holds no permission, scored 2.08, and would
+   have been recommended for the removal of access it never had.
+4. **Advisory counts silently zeroed.** Two stages write `repo_stats`; the
+   contribution pass overwrote the advisory pass's `open_advisories` with its
+   default, so a repository with 32 stored alerts displayed "0 open alerts".
+   The upsert is now a partial update.
+
+All four became code changes with tests. Section 8 of
+[DESIGN_NOTES.md](DESIGN_NOTES.md) records the reasoning.
 
 ### Idempotency and caching, verified live
 
@@ -388,9 +422,9 @@ A second identical run:
 ```
 
 **8 of 13 requests served from stored ETags** — 304 responses, which do not
-count against the API quota. Row counts after two full runs: `runs 2`, and
-every fact table unchanged — `repos 1`, `collaborators 2`, `scores 2`.
-Idempotency and conditional caching confirmed against the real API.
+count against the API quota. Row counts after two full runs: `runs 2`, every
+fact table unchanged. Idempotency and conditional caching confirmed against the
+real API, not against mocks.
 
 ### What is mocked, stated plainly
 

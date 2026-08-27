@@ -487,33 +487,55 @@ def assess_repo(
     return assessment
 
 
+#: Below this many days since last activity, a flag is about how little someone
+#: contributed rather than how long ago they stopped. Presentation only - it
+#: never affects the score.
+RECENT_BUT_THIN_DAYS = 30
+
+
 def _count(n: int, singular: str, plural: str | None = None) -> str:
     """'1 commit' / '3 commits'. Sloppy plurals make a report look automated."""
     return f"{n} {singular if n == 1 else (plural or singular + 's')}"
 
 
 def explain_flag(scored: MemberScore, cfg: ScoringConfig | None = None) -> str:
-    """One sentence a non-engineer can act on. This is the 'why' column."""
+    """One sentence a non-engineer can act on. This is the 'why' column.
+
+    A score falls below the threshold for one of two different reasons, and
+    saying the wrong one makes the report look broken. Someone can be flagged
+    because they stopped contributing months ago, or because they are present
+    but barely contribute. Reporting "last contributed 0 days ago" next to a
+    flag reads as a contradiction, even though the arithmetic is right - so the
+    sentence leads with whichever cause actually applies.
+    """
     cfg = cfg or config.SCORING
     perm = scored.permission or "unknown"
+    window = int(cfg.no_activity_days)
+
+    volume = (
+        f"{_count(scored.commits, 'commit')}, "
+        f"{_count(scored.reviews, 'PR')} reviewed, "
+        f"{_count(scored.prs_merged, 'PR')} merged"
+    )
 
     if scored.activity == 0:
-        when = (
+        why = (
             "has no recorded commits, reviews or pull requests"
-            f" in the last {int(cfg.no_activity_days)} days"
+            f" in the last {window} days"
         )
     elif scored.days_since_activity is None:
-        when = "has activity that could not be dated"
+        why = f"has activity that could not be dated ({volume})"
+    elif scored.days_since_activity < RECENT_BUT_THIN_DAYS:
+        # Present, but barely. Recency is not the problem here; volume is.
+        why = f"has contributed only {volume} in the last {window} days"
     else:
-        when = (
+        why = (
             f"last contributed {int(scored.days_since_activity)} days ago"
-            f" ({_count(scored.commits, 'commit')},"
-            f" {_count(scored.reviews, 'PR')} reviewed,"
-            f" {_count(scored.prs_merged, 'PR')} merged in the window)"
+            f" ({volume} in the window)"
         )
 
     return (
-        f"Holds {perm} access but {when}. "
+        f"Holds {perm} access but {why}. "
         f"Score {scored.score:.2f} is below the {cfg.threshold:.1f} threshold."
     )
 

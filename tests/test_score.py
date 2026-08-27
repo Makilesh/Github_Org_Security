@@ -561,3 +561,47 @@ class TestContributorsWithoutAccess:
     def test_has_access_is_false_only_when_every_path_is_absent(self):
         assert not MemberInput(login="x").has_access
         assert MemberInput(login="x", is_base=True).has_access
+
+
+class TestExplanationChoosesTheRightCause:
+    """A flag has two possible causes and naming the wrong one looks broken.
+
+    From the live run: a member with one commit made today was flagged, and the
+    sentence read "last contributed 0 days ago" - arithmetically right, and it
+    reads like a bug.
+    """
+
+    def test_recent_but_thin_leads_with_volume(self):
+        scored = score_member(
+            MemberInput(login="newish", permission="admin", commits=1,
+                        last_activity_at=NOW),
+            1, now=NOW, cfg=CFG,
+        )
+        text = explain_flag(scored, CFG)
+        assert "contributed only 1 commit" in text
+        assert "0 days ago" not in text
+
+    def test_long_dormant_leads_with_recency(self):
+        scored = score_member(
+            MemberInput(login="stale", permission="write", commits=2,
+                        last_activity_at=days_ago(150)),
+            1, now=NOW, cfg=CFG,
+        )
+        text = explain_flag(scored, CFG)
+        assert "last contributed 150 days ago" in text
+
+    def test_no_activity_at_all_says_so(self):
+        scored = score_member(MemberInput(login="ghost", permission="admin"),
+                              1, now=NOW, cfg=CFG)
+        assert "no recorded commits" in explain_flag(scored, CFG)
+
+    def test_every_variant_names_the_threshold_and_permission(self):
+        for member in (
+            MemberInput(login="a", permission="admin"),
+            MemberInput(login="b", permission="write", commits=1, last_activity_at=NOW),
+            MemberInput(login="c", permission="read", commits=2,
+                        last_activity_at=days_ago(150)),
+        ):
+            text = explain_flag(score_member(member, 1, now=NOW, cfg=CFG), CFG)
+            assert "5.0 threshold" in text
+            assert member.permission in text
