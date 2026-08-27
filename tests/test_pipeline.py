@@ -341,3 +341,44 @@ def test_config_summary_is_json_serialisable_and_tokenless():
     payload = json.dumps(config.summary())
     assert "token" not in payload.lower()
     assert json.loads(payload)["scoring"]["threshold"] == 5.0
+
+
+class TestRepoStatsArePartialUpdates:
+    """Two stages write repo_stats and neither knows the other's numbers.
+
+    Found on a live scan: the advisory pass recorded 32 open alerts, the
+    contribution pass then wrote commit counts without them, and the dashboard
+    reported "0 open alerts" for a repository whose advisories table held 32.
+    """
+
+    def test_a_later_write_does_not_erase_an_earlier_one(self, tmp_path, org):
+        with Database(tmp_path / "s.sqlite3") as db:
+            run_id = db.start_run("acme", config.summary())
+            db.upsert_repo(run_id, {"id": 1, "name": "api", "full_name": "acme/api",
+                                    "owner": {"login": "acme"}})
+
+            db.upsert_repo_stats(run_id, 1, open_advisories=32)
+            db.upsert_repo_stats(run_id, 1, total_commits=205, contributor_count=2)
+
+            row = db.query_one("SELECT * FROM repo_stats WHERE repo_id = 1")
+            assert row["open_advisories"] == 32, "advisory count was overwritten"
+            assert row["total_commits"] == 205
+            assert row["contributor_count"] == 2
+
+    def test_explicit_zero_still_overwrites(self, tmp_path):
+        """A real zero must be recordable - only omission preserves."""
+        with Database(tmp_path / "s.sqlite3") as db:
+            run_id = db.start_run("acme", config.summary())
+            db.upsert_repo(run_id, {"id": 1, "name": "api", "full_name": "acme/api",
+                                    "owner": {"login": "acme"}})
+            db.upsert_repo_stats(run_id, 1, open_advisories=5)
+            db.upsert_repo_stats(run_id, 1, open_advisories=0)
+            assert db.query_one("SELECT * FROM repo_stats WHERE repo_id = 1")["open_advisories"] == 0
+
+    def test_unknown_field_is_rejected_rather_than_ignored(self, tmp_path):
+        with Database(tmp_path / "s.sqlite3") as db:
+            run_id = db.start_run("acme", config.summary())
+            db.upsert_repo(run_id, {"id": 1, "name": "api", "full_name": "acme/api",
+                                    "owner": {"login": "acme"}})
+            with pytest.raises(ValueError, match="unknown repo_stats field"):
+                db.upsert_repo_stats(run_id, 1, open_advisoryes=3)
