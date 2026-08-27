@@ -514,37 +514,39 @@ class Database:
         self.execute(f"UPDATE repos SET {', '.join(sets)} WHERE repo_id = ?", params)
 
     def upsert_repo_stats(self, run_id: int, repo_id: int, **fields: Any) -> None:
+        """Update only the counters that were supplied.
+
+        This is a partial update on purpose. Repo stats are written by two
+        different stages - the advisory pass knows `open_advisories`, the
+        contribution pass knows the commit counts - and neither knows the
+        other's numbers. An all-columns upsert meant whichever stage ran second
+        silently reset the first one's work to zero, so every repository
+        reported "0 open alerts" on the dashboard while the advisories table
+        held thirty-two of them.
+        """
         allowed = (
             "total_commits", "unattributed_commits", "contributor_count",
             "collaborator_count", "open_advisories", "window_start",
         )
-        values = {k: fields.get(k) for k in allowed}
+        supplied = {k: v for k, v in fields.items() if k in allowed and v is not None}
+        unknown = set(fields) - set(allowed)
+        if unknown:
+            raise ValueError(f"unknown repo_stats field(s): {sorted(unknown)}")
+
+        columns = list(supplied)
+        placeholders = ", ".join("?" for _ in columns)
+        assignments = ", ".join(f"{c} = excluded.{c}" for c in columns)
+        prefix = ", " if columns else ""
+
         self.execute(
-            """
-            INSERT INTO repo_stats(repo_id, run_id, total_commits, unattributed_commits,
-                                   contributor_count, collaborator_count, open_advisories,
-                                   window_start, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            f"""
+            INSERT INTO repo_stats(repo_id, run_id{prefix}{", ".join(columns)}, updated_at)
+            VALUES (?, ?{prefix}{placeholders}, ?)
             ON CONFLICT(repo_id) DO UPDATE SET
-                run_id = excluded.run_id,
-                total_commits = excluded.total_commits,
-                unattributed_commits = excluded.unattributed_commits,
-                contributor_count = excluded.contributor_count,
-                collaborator_count = excluded.collaborator_count,
-                open_advisories = excluded.open_advisories,
-                window_start = excluded.window_start,
+                run_id = excluded.run_id{prefix}{assignments},
                 updated_at = excluded.updated_at
             """,
-            (
-                repo_id, run_id,
-                int(values["total_commits"] or 0),
-                int(values["unattributed_commits"] or 0),
-                int(values["contributor_count"] or 0),
-                int(values["collaborator_count"] or 0),
-                int(values["open_advisories"] or 0),
-                values["window_start"],
-                utcnow(),
-            ),
+            (repo_id, run_id, *supplied.values(), utcnow()),
         )
 
     def upsert_advisory(self, run_id: int, repo_id: int, alert: Mapping[str, Any], source: str = "repo") -> str:

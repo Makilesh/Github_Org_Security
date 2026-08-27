@@ -177,7 +177,15 @@ def advisory_context(db: Database, run_id: int, now: datetime) -> dict[str, Any]
 
 
 def access_path_label(row: Mapping[str, Any]) -> str:
-    """The three access kinds, never merged into one word."""
+    """Every access path, named precisely and never merged into one word.
+
+    Organization-level access has two different causes that look identical in
+    the API - both show up as "in the full collaborator list, but not a direct
+    grant". An **owner** holds admin because they own the organization; an
+    ordinary **member** holds whatever the base permission says. Calling the
+    owner's admin a "base permission" would be flatly untrue whenever the base
+    is set to something weaker, which is the normal case.
+    """
     parts = []
     if row["is_direct"]:
         parts.append(f"Direct ({humanise_permission(row['permission_direct'])})")
@@ -187,8 +195,17 @@ def access_path_label(row: Mapping[str, Any]) -> str:
         teams = row["team_names"] or "a team"
         parts.append(f"Team: {teams} ({humanise_permission(row['permission_team'])})")
     if row["is_base"]:
-        parts.append(f"Org base permission ({humanise_permission(row['permission_base'])})")
+        permission = humanise_permission(row["permission_base"])
+        source = ("Organization owner" if _is_owner(row) else "Org base permission")
+        parts.append(f"{source} ({permission})")
     return " + ".join(parts) or "No current access"
+
+
+def _is_owner(row: Mapping[str, Any]) -> bool:
+    try:
+        return bool(row["is_org_owner"])
+    except (KeyError, IndexError):
+        return False
 
 
 def repo_context(db: Database, run_id: int, now: datetime) -> list[dict[str, Any]]:
@@ -208,6 +225,7 @@ def repo_context(db: Database, run_id: int, now: datetime) -> list[dict[str, Any
             SELECT s.*, c.is_direct, c.is_outside, c.is_team, c.team_names,
                    c.permission_direct, c.permission_outside, c.permission_team,
                    c.user_type, c.is_base, c.permission_base,
+                   COALESCE(o.is_owner, 0) AS is_org_owner,
                    k.commits, k.prs_opened, k.prs_merged, k.reviews,
                    k.last_commit_at, k.last_review_at, k.last_activity_at,
                    k.last_commit_ever,
@@ -215,6 +233,7 @@ def repo_context(db: Database, run_id: int, now: datetime) -> list[dict[str, Any
               FROM scores s
               LEFT JOIN collaborators c ON c.repo_id = s.repo_id AND c.login = s.login
               LEFT JOIN contributions k ON k.repo_id = s.repo_id AND k.login = s.login
+              LEFT JOIN org_members  o ON o.login = s.login
               LEFT JOIN exclusions   e ON e.repo_id = s.repo_id AND e.login = s.login
              WHERE s.repo_id = ?
              ORDER BY s.score DESC, s.login
@@ -297,13 +316,14 @@ def suggestion_context(db: Database, run_id: int, now: datetime) -> list[dict[st
                r.is_archived, r.is_private,
                c.is_direct, c.is_outside, c.is_team, c.is_base, c.team_names,
                c.permission_direct, c.permission_outside, c.permission_team,
-               c.permission_base,
+               c.permission_base, COALESCE(o.is_owner, 0) AS is_org_owner,
                k.commits, k.reviews, k.prs_merged, k.prs_opened,
                k.last_commit_at, k.last_review_at, k.last_activity_at, k.last_commit_ever
           FROM scores s
           JOIN repos r ON r.repo_id = s.repo_id
           LEFT JOIN collaborators c ON c.repo_id = s.repo_id AND c.login = s.login
           LEFT JOIN contributions k ON k.repo_id = s.repo_id AND k.login = s.login
+          LEFT JOIN org_members  o ON o.login = s.login
          WHERE s.run_id = ? AND s.flagged = 1
          ORDER BY s.risk DESC, s.login, s.repo_id
         """,
