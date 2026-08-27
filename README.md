@@ -39,6 +39,30 @@ real execution.
 
 ---
 
+## Documents
+
+Start with the one-pager; the rest is there when you want the detail.
+
+| Document | What it covers | PDF |
+| -------- | -------------- | --- |
+| [SUBMISSION.md](SUBMISSION.md) | One page: scoring logic and why, edge cases, production-readiness | [pdf](docs/pdf/SUBMISSION.pdf) |
+| [README.md](README.md) | Setup, token permissions, usage | [pdf](docs/pdf/README.pdf) |
+| [DESIGN_NOTES.md](DESIGN_NOTES.md) | Every decision and its reasoning, what changed mid-build, AI-assistance disclosure | [pdf](docs/pdf/DESIGN_NOTES.pdf) |
+| [RUN_REPORT.md](RUN_REPORT.md) | Step-by-step execution with captured output and dashboard screenshots — demo *and* a live organization | [pdf](docs/pdf/RUN_REPORT.pdf) |
+| Dashboard | The generated report itself | [html](docs/demo_dashboard.html) · [pdf](docs/pdf/dashboard.pdf) |
+
+Regenerate the whole bundle — PDFs and screenshots — from a clean clone:
+
+```bash
+python tools/make_docs.py
+```
+
+It renders through headless Chrome or Edge, so there is no extra toolchain to
+install, and the screenshots are produced from the committed dashboard rather
+than captured by hand, which keeps them from drifting.
+
+---
+
 ## Setup
 
 ### 1. Environment
@@ -204,13 +228,14 @@ archived repo is still live access, and anyone holding it can unarchive the repo
 python -m pytest -q
 ```
 
-137 tests covering the scoring arithmetic against hand-computed values, every
+149 tests covering the scoring arithmetic against hand-computed values, every
 exclusion rule, the full fixture organization end-to-end (including the exact
 expected ranking), database idempotency, the HTTP layer — rate-limit waits,
 `Retry-After`, ETag 304s, cursor pagination, GraphQL error handling — and the
 rule that a refused access listing is never rendered as "nobody has access",
-and the rule that an archived repo changes the remediation advice but never
-the score.
+that an archived repo changes the remediation advice but never the score, that
+an organization's base permission is not mistaken for a team grant, and that a
+contributor holding no access is never suggested for removal.
 
 CI runs the suite on Python 3.11 and 3.12, then runs `--demo` end-to-end and
 fails the build if the fixture findings drift from the numbers published in

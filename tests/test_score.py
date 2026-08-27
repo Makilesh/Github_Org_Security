@@ -519,3 +519,45 @@ class TestExplanations:
     def test_explanation_names_the_threshold(self):
         scored = score_member(member("ghost", "read"), 1, now=NOW, cfg=CFG)
         assert "5.0 threshold" in explain_flag(scored, CFG)
+
+
+class TestContributorsWithoutAccess:
+    """A contributor is not the same thing as a collaborator.
+
+    Found on a live organization: a coding agent's commits were attributed to
+    an account that held no permission on the repo. It was scored, fell below
+    the threshold, and would have been suggested for "access removal" - of
+    access it never had.
+    """
+
+    def _repo(self):
+        return RepoInput(repo_id=1, full_name="acme/api",
+                         created_at=days_ago(900), contributor_count=4)
+
+    def test_contributor_with_no_access_is_never_flagged(self):
+        contributor = MemberInput(login="Copilot", permission=None, commits=1,
+                                  last_activity_at=days_ago(3))
+        result = assess_repo(self._repo(), [contributor], now=NOW, cfg=CFG)
+        assert result.flagged == []
+        assert result.scored[0].excluded_reason == ExclusionReason.NO_ACCESS
+
+    def test_they_still_appear_in_the_table_with_their_score(self):
+        """Context is the point - they are not dropped, just not suggested."""
+        contributor = MemberInput(login="departed-dev", commits=40,
+                                  last_activity_at=days_ago(10))
+        result = assess_repo(self._repo(), [contributor], now=NOW, cfg=CFG)
+        assert len(result.scored) == 1
+        assert result.scored[0].score > 0
+
+    @pytest.mark.parametrize(
+        "kwargs",
+        [{"is_direct": True}, {"is_outside": True}, {"is_team": True}, {"is_base": True}],
+    )
+    def test_any_real_access_path_makes_them_flaggable(self, kwargs):
+        member = MemberInput(login="dormant", permission="write", **kwargs)
+        result = assess_repo(self._repo(), [member], now=NOW, cfg=CFG)
+        assert result.flagged, f"holder of {kwargs} should be assessable"
+
+    def test_has_access_is_false_only_when_every_path_is_absent(self):
+        assert not MemberInput(login="x").has_access
+        assert MemberInput(login="x", is_base=True).has_access

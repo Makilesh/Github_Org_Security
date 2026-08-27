@@ -121,6 +121,16 @@ GitHub grants repository access three ways:
 | **Direct**          | One click on this repo                                  |
 | **Outside collaborator** | One click, but the person is not an org member      |
 | **Team-inherited**  | Change the team — affects every repo that team can reach |
+| **Org base permission** | One org-wide setting — affects every member on every repo |
+
+The fourth one is the trap, and I only found it by running against a real
+organization. `default_repository_permission` (Settings → Member privileges)
+can hand every member the same access to every repository. Those people appear
+in the `all` collaborator listing but not in `direct`, and they belong to no
+team — so the obvious `all − direct` rule files them as team-inherited and
+tells the reviewer to go change a team that does not exist. The scanner now
+reads the org setting, separates that path, and points the remediation at the
+one place it can actually be fixed.
 
 These are different findings with different remediations, so they are stored in
 separate columns (`is_direct` / `is_outside` / `is_team`, each with its own
@@ -295,7 +305,24 @@ The three listings are now read through a helper that captures the refusal,
 dashboard leads with a red banner naming every repository whose access could
 not be read. `tests/test_access.py` covers it.
 
-**5. The report's date filters used the wall clock.** Every "N days ago" in the
+**5. Org base permission was being reported as team-inherited.** Described in
+section 3. The scan of a live organization with `default_repository_permission
+= "read"` produced a member labelled "via a team" when the org had no teams at
+all. Both the label and the remediation advice were wrong, and the error is
+invisible on any org that leaves base permissions at *none* — which is why
+fixtures alone never caught it.
+
+**6. Contributors without access were being suggested for access removal.**
+Also from the live scan. A repository's contributor list and its collaborator
+list are different sets: a coding agent's commits were attributed to an account
+that held no permission on the repo, so it was scored, fell below the
+threshold, and would have been recommended for the removal of access it never
+had. `MemberInput.has_access` now gates the suggestion — such people stay in
+the per-repo table as context, because "someone wrote half this code and has no
+access today" is useful information, but they can never be suggested for
+removal. Nonsense recommendations are how a report loses its reader.
+
+**7. The report's date filters used the wall clock.** Every "N days ago" in the
 template called `datetime.now()` instead of the run's timestamp, so the demo —
 whose whole purpose is reproducible output — would have drifted day to day, and
 the suggestion table could disagree with itself by one day. The filters are now
@@ -446,6 +473,13 @@ producing this documentation.
 - **The wall-clock bug in the report filters** (section 8, item 5) was likewise
   AI-drafted and caught by comparing two numbers on the rendered page that
   disagreed by one day.
+- **Three bugs were found only by pointing the tool at a real organization**,
+  not by any test: the silent-empty-access bug (item 4), the base-permission
+  mislabelling (item 5), and the nonsense suggestions for contributors with no
+  access (item 6). All three are invisible against fixtures, because fixtures
+  encode what I already believed was true. That is the argument for running
+  against real data early, and it is why the run report keeps a live section
+  even though the demo org is more illustrative.
 - **The silent-empty-access bug** (section 8, item 4) was only found by running
   against a real token with incomplete permissions. No unit test would have
   caught it, because the code did exactly what it was written to do — the

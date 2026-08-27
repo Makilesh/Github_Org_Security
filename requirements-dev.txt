@@ -1,2 +1,7 @@
 -r requirements.txt
 pytest==9.1.1
+
+# Only needed for `python tools/make_docs.py`, which builds the PDF/screenshot
+# bundle. Not needed to run a scan.
+Markdown==3.10.3
+Pygments==2.21.0
