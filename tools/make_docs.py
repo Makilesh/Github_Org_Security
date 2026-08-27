@@ -127,7 +127,7 @@ def render_markdown(path: Path) -> str:
     # Images must become absolute file URIs. The page is rendered from a
     # temporary directory, so any relative path would resolve against the temp
     # folder and the image would silently vanish from the PDF.
-    for image in sorted(IMG_DIR.glob("*.png")) if IMG_DIR.is_dir() else []:
+    for image in (sorted(IMG_DIR.glob("*.png")) if IMG_DIR.is_dir() else []):
         text = text.replace(f"](docs/img/{image.name})", f"]({image.resolve().as_uri()})")
 
     body = markdown.markdown(
@@ -221,8 +221,27 @@ SECTION_SHOTS = [
 ]
 
 
-def section_screenshots(browser: Path, dashboard: Path) -> list[tuple[str, str]]:
-    """Screenshot each dashboard section separately, via a temporary copy."""
+#: The live organization has far less content than the fixture, so the same
+#: heights leave half a page of grey. Overrides keep both sets tight.
+SIZE_OVERRIDES: dict[str, dict[str, tuple[int, int]]] = {
+    "live": {
+        "overview": (1400, 500),
+        "advisories": (1500, 1500),
+        "access": (1500, 1500),
+        "suggestions": (1800, 640),
+        "exclusions": (1400, 1250),
+    },
+}
+
+
+def section_screenshots(
+    browser: Path, dashboard: Path, prefix: str = "dashboard"
+) -> list[tuple[str, str]]:
+    """Screenshot each dashboard section separately, via a temporary copy.
+
+    `prefix` keeps the demo and live sets apart in docs/img/ so a rebuild of
+    one never silently overwrites the other.
+    """
     html = dashboard.read_text(encoding="utf-8")
     captured: list[tuple[str, str]] = []
 
@@ -270,10 +289,11 @@ window.addEventListener('load', function () {
 
     with tempfile.TemporaryDirectory() as tmp:
         for key, caption, width, height in SECTION_SHOTS:
+            width, height = SIZE_OVERRIDES.get(prefix, {}).get(key, (width, height))
             injected = helper.replace("__SHOT__", scripts[key])
             page = Path(tmp) / f"{key}.html"
             page.write_text(html.replace("</body>", injected + "</body>"), encoding="utf-8")
-            png = IMG_DIR / f"dashboard-{key}.png"
+            png = IMG_DIR / f"{prefix}-{key}.png"
             if html_to_png(browser, page, png, width=width, height=height):
                 captured.append((f"docs/img/{png.name}", caption))
 
@@ -291,16 +311,25 @@ def main(argv: list[str] | None = None) -> int:
     browser = find_browser()
     print(f"Renderer: {browser.name}")
 
-    dashboard = DOCS / "demo_dashboard.html"
-    if not dashboard.is_file():
-        print(f"! {dashboard} missing - run `python main.py --demo` first, then copy "
+    demo = DOCS / "demo_dashboard.html"
+    if not demo.is_file():
+        print(f"! {demo} missing - run `python main.py --demo` first, then copy "
               f"out/dashboard.html into docs/.")
         return 1
 
+    # (source, screenshot prefix, pdf name). The live dashboard is optional: it
+    # exists only once a real scan has been copied in, and it is the one
+    # artifact here that carries real organization data.
+    dashboards = [(demo, "dashboard", "dashboard.pdf")]
+    live = DOCS / "live" / "dashboard.html"
+    if live.is_file():
+        dashboards.append((live, "live", "live_dashboard.pdf"))
+
     if not args.skip_images:
-        print("\nDashboard snapshots:")
-        section_screenshots(browser, dashboard)
-        html_to_pdf(browser, dashboard, PDF_DIR / "dashboard.pdf", budget=6000)
+        for source, prefix, pdf_name in dashboards:
+            print(f"\nSnapshots of {source.relative_to(ROOT)}:")
+            section_screenshots(browser, source, prefix)
+            html_to_pdf(browser, source, PDF_DIR / pdf_name, budget=6000)
 
     print("\nWrite-ups:")
     targets = [args.only] if args.only else DOCUMENTS

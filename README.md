@@ -49,7 +49,8 @@ Start with the one-pager; the rest is there when you want the detail.
 | [README.md](README.md) | Setup, token permissions, usage | [pdf](docs/pdf/README.pdf) |
 | [DESIGN_NOTES.md](DESIGN_NOTES.md) | Every decision and its reasoning, what changed mid-build, AI-assistance disclosure | [pdf](docs/pdf/DESIGN_NOTES.pdf) |
 | [RUN_REPORT.md](RUN_REPORT.md) | Step-by-step execution with captured output and dashboard screenshots — demo *and* a live organization | [pdf](docs/pdf/RUN_REPORT.pdf) |
-| Dashboard | The generated report itself | [html](docs/demo_dashboard.html) · [pdf](docs/pdf/dashboard.pdf) |
+| Dashboard (demo) | The generated report, from fixtures | [html](docs/demo_dashboard.html) · [pdf](docs/pdf/dashboard.pdf) |
+| Dashboard (live) | The same report from a real organization scan | [html](docs/live/dashboard.html) · [pdf](docs/pdf/live_dashboard.pdf) |
 
 Regenerate the whole bundle — PDFs and screenshots — from a clean clone:
 

@@ -382,6 +382,43 @@ flagged the active admin, or the owners, or the person whose read access comes
 from an org-wide setting, would be worse than useless — the reviewer would stop
 trusting the list on the first false positive.
 
+### The live dashboard
+
+The same four sections, rendered from the real organization. These are produced
+by `python tools/make_docs.py`, from the committed
+[docs/live/dashboard.html](docs/live/dashboard.html), so they cannot drift from
+what the scan actually produced. A printed copy is at
+[docs/pdf/live_dashboard.pdf](docs/pdf/live_dashboard.pdf).
+
+![Live headline summary and KPI tiles](docs/img/live-overview.png)
+
+Three sentences, then the numbers: 15 critical or high vulnerabilities open,
+2 stale access grants, 21 people-repository pairs assessed.
+
+![Live security advisories](docs/img/live-advisories.png)
+
+32 open alerts, all in one repository — real CVEs against `torch`, `pillow` and
+`black`. The "most affected repositories" chart collapses to a single bar,
+which is itself the finding.
+
+![Live per-repo member table](docs/img/live-access.png)
+
+Seven repositories, each expandable. Note `Auto_Job_Applying_Agent`: the same
+person who is flagged elsewhere holds **admin** here and is **not** flagged,
+because they actually contributed.
+
+![Live suggested removals](docs/img/live-suggestions.png)
+
+Two suggestions, ranked by risk, each carrying its evidence and its remediation.
+
+![Live exclusion panel](docs/img/live-exclusions.png)
+
+Nineteen grants held back, grouped by reason — organization owners, org base
+permission, contributors with no access, repositories too new or too small.
+This panel is what makes the two suggestions above believable.
+
+---
+
 ### A limitation this run exposed
 
 `voice_mvp_dupe` was, before the commits above, a repository with **three
