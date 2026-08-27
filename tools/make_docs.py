@@ -163,6 +163,40 @@ def _run(browser: Path, args: list[str], label: str) -> bool:
     return True
 
 
+#: Chart.js draws into <canvas>. Canvas survives Chrome's print path but not
+#: every engine's, so before printing a dashboard each canvas is replaced by an
+#: equivalent PNG. After that the page is plain HTML and images, and the PDF
+#: renders the same everywhere.
+FLATTEN_CANVAS = """
+<script>
+window.addEventListener('load', function () {
+  setTimeout(function () {
+    document.querySelectorAll('canvas').forEach(function (canvas) {
+      try {
+        var img = new Image();
+        img.src = canvas.toDataURL('image/png');
+        img.style.width = canvas.clientWidth + 'px';
+        img.style.height = canvas.clientHeight + 'px';
+        canvas.parentNode.replaceChild(img, canvas);
+      } catch (err) { /* leave the canvas in place */ }
+    });
+  }, 1200);
+});
+</script>
+"""
+
+
+def dashboard_to_pdf(browser: Path, html: Path, pdf: Path) -> bool:
+    """Print a dashboard, flattening its charts to images first."""
+    with tempfile.TemporaryDirectory() as tmp:
+        page = Path(tmp) / html.name
+        page.write_text(
+            html.read_text(encoding="utf-8").replace("</body>", FLATTEN_CANVAS + "</body>"),
+            encoding="utf-8",
+        )
+        return html_to_pdf(browser, page, pdf, budget=9000)
+
+
 def html_to_pdf(browser: Path, html: Path, pdf: Path, *, budget: int = 4000) -> bool:
     pdf.parent.mkdir(parents=True, exist_ok=True)
     ok = _run(
@@ -329,7 +363,7 @@ def main(argv: list[str] | None = None) -> int:
         for source, prefix, pdf_name in dashboards:
             print(f"\nSnapshots of {source.relative_to(ROOT)}:")
             section_screenshots(browser, source, prefix)
-            html_to_pdf(browser, source, PDF_DIR / pdf_name, budget=6000)
+            dashboard_to_pdf(browser, source, PDF_DIR / pdf_name)
 
     print("\nWrite-ups:")
     targets = [args.only] if args.only else DOCUMENTS

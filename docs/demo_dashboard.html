@@ -143,9 +143,12 @@
     .card { box-shadow: none; border-color: #ccc; }
     a { color: inherit; text-decoration: none; }
 
-    /* Charts rasterise unreliably across engines; the tables beside them
-       carry the same numbers, so drop them rather than print blank boxes. */
-    .chartbox { display: none; }
+    /* Charts do print. `tools/make_docs.py` flattens each canvas to a PNG
+       before printing, so the generated PDFs are engine-independent; printing
+       by hand from Chrome or Edge also works. The "most affected repositories"
+       card has no table beside it, so hiding charts would drop that finding
+       from the paper copy entirely. */
+    .chartbox { break-inside: avoid; }
   }
 </style>
 </head>
@@ -158,7 +161,7 @@
       Generated 25 Aug 2026, 12:00 UTC ·
       Activity window: last 180 days ·
       5 repositories scanned, 1 skipped ·
-      Run #3
+      Run #2
     </div>
   </div>
 </header>
@@ -1309,7 +1312,7 @@ The oldest has been open for 347 days.      </li>
       Flagged below 5.0.
     </p>
     <p>
-      Run #3 · started 2026-08-27T19:29:40+00:00 · database keyed on GitHub IDs, so re-running
+      Run #2 · started 2026-08-27T19:55:48+00:00 · database keyed on GitHub IDs, so re-running
       updates this report in place rather than duplicating it. Access removal is always a suggestion,
       never an automatic action.
     </p>
