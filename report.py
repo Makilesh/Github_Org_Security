@@ -186,6 +186,8 @@ def access_path_label(row: Mapping[str, Any]) -> str:
     if row["is_team"]:
         teams = row["team_names"] or "a team"
         parts.append(f"Team: {teams} ({humanise_permission(row['permission_team'])})")
+    if row["is_base"]:
+        parts.append(f"Org base permission ({humanise_permission(row['permission_base'])})")
     return " + ".join(parts) or "No current access"
 
 
@@ -205,7 +207,7 @@ def repo_context(db: Database, run_id: int, now: datetime) -> list[dict[str, Any
             """
             SELECT s.*, c.is_direct, c.is_outside, c.is_team, c.team_names,
                    c.permission_direct, c.permission_outside, c.permission_team,
-                   c.user_type,
+                   c.user_type, c.is_base, c.permission_base,
                    k.commits, k.prs_opened, k.prs_merged, k.reviews,
                    k.last_commit_at, k.last_review_at, k.last_activity_at,
                    k.last_commit_ever,
@@ -224,6 +226,8 @@ def repo_context(db: Database, run_id: int, now: datetime) -> list[dict[str, Any
                 "permission": humanise_permission(row["permission"]),
                 "access_path": access_path_label(row),
                 "is_team_only": bool(row["is_team"]) and not (row["is_direct"] or row["is_outside"]),
+                "is_base_only": bool(row["is_base"]) and not (
+                    row["is_direct"] or row["is_outside"] or row["is_team"]),
                 "score": row["score"],
                 "activity": row["activity"],
                 "risk": row["risk"],
@@ -291,8 +295,9 @@ def suggestion_context(db: Database, run_id: int, now: datetime) -> list[dict[st
         """
         SELECT s.*, r.full_name, r.name AS repo_name, r.html_url AS repo_url,
                r.is_archived, r.is_private,
-               c.is_direct, c.is_outside, c.is_team, c.team_names,
+               c.is_direct, c.is_outside, c.is_team, c.is_base, c.team_names,
                c.permission_direct, c.permission_outside, c.permission_team,
+               c.permission_base,
                k.commits, k.reviews, k.prs_merged, k.prs_opened,
                k.last_commit_at, k.last_review_at, k.last_activity_at, k.last_commit_ever
           FROM scores s
@@ -308,6 +313,8 @@ def suggestion_context(db: Database, run_id: int, now: datetime) -> list[dict[st
     suggestions = []
     for row in rows:
         team_only = bool(row["is_team"]) and not (row["is_direct"] or row["is_outside"])
+        base_only = bool(row["is_base"]) and not (
+            row["is_direct"] or row["is_outside"] or row["is_team"])
         suggestions.append({
             "login": row["login"],
             "repo": row["full_name"],
@@ -318,6 +325,7 @@ def suggestion_context(db: Database, run_id: int, now: datetime) -> list[dict[st
             "permission": humanise_permission(row["permission"]),
             "access_path": access_path_label(row),
             "team_only": team_only,
+            "base_only": base_only,
             "team_names": row["team_names"],
             "score": row["score"],
             "risk": row["risk"],
@@ -333,6 +341,7 @@ def suggestion_context(db: Database, run_id: int, now: datetime) -> list[dict[st
             # page cannot drift from the advice the model reasons about.
             "action": remediation_note(
                 is_team_only=team_only,
+                is_base_only=base_only,
                 teams=[t.strip() for t in str(row["team_names"] or "").split(",") if t.strip()],
                 is_archived=bool(row["is_archived"]),
             ),

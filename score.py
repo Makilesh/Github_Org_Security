@@ -109,6 +109,7 @@ def remediation_note(
     is_team_only: bool,
     teams: Sequence[str] = (),
     is_archived: bool = False,
+    is_base_only: bool = False,
 ) -> str:
     """What a reviewer would actually have to do to act on a suggestion.
 
@@ -116,8 +117,16 @@ def remediation_note(
     advice shown on the report can never drift from the advice the model
     believes it is giving.
 
-    Two cases the obvious wording gets wrong:
+    Three cases the obvious wording gets wrong:
 
+    * **Organization base permission** is not a grant on the repository at all.
+      It is one setting under Member privileges that hands every member the
+      same access to every repository. Telling a reviewer to revoke it "on this
+      repo" is impossible advice, and the blast radius of the real fix is the
+      entire organization. This is easy to mistake for team-inherited access,
+      because both show up as "in the full collaborator list, but not a direct
+      grant" - and a real scan of a live org is exactly where that mistake
+      surfaces.
     * **Team-inherited access** cannot be revoked on the repo at all. Sending
       someone to the repo's settings page for it wastes their time and hides
       the blast radius of the real fix.
@@ -129,7 +138,14 @@ def remediation_note(
       more than it sounds: in the demo org the single highest-risk finding
       sits on an archived repo.
     """
-    if is_team_only:
+    if is_base_only:
+        note = (
+            "Access comes from the organization's base permission, not from any "
+            "grant on this repository, so it cannot be revoked here. The fix is "
+            "one setting - Organization Settings > Member privileges > Base "
+            "permissions - and it changes what every member can reach."
+        )
+    elif is_team_only:
         via = ", ".join(teams) if teams else "a team"
         note = (
             f"Access is inherited from {via}. Removing it means changing "
@@ -139,7 +155,7 @@ def remediation_note(
     else:
         note = "Direct repository grant; can be revoked on this repo alone."
 
-    if is_archived:
+    if is_archived and not is_base_only:
         note += (
             " The repository is archived, and GitHub refuses collaborator "
             "changes while it is - remove the grant at the org or team level, "
@@ -170,8 +186,33 @@ class MemberInput:
     is_direct: bool = False
     is_outside: bool = False
     is_team: bool = False
+    is_base: bool = False
     teams: tuple[str, ...] = ()
     access_label: str = ""
+
+    @property
+    def has_access(self) -> bool:
+        """Does this person actually hold access right now?
+
+        A repo's contributor list and its collaborator list are not the same
+        set. Someone can have written half the code and hold no permission
+        today - a departed contributor, or a coding agent whose commits are
+        attributed to an account that was never a collaborator. They belong in
+        the per-repo table as context, but suggesting the removal of access
+        they do not have is nonsense, and it is the kind of nonsense that
+        destroys trust in the whole report.
+
+        A permission counts on its own: it only ever comes from the collaborator
+        listing, so its presence means access exists even when the *kind* of
+        access could not be determined. The flags say which path; the permission
+        says whether. Requiring a flag as well would silently drop anyone whose
+        access path we failed to classify - the same "confidently wrong" failure
+        as reporting a refused listing as nobody-has-access.
+        """
+        return bool(
+            self.permission
+            or self.is_direct or self.is_outside or self.is_team or self.is_base
+        )
 
 
 @dataclass(frozen=True)
@@ -205,6 +246,7 @@ class MemberScore:
     excluded_detail: str | None = None
     access_label: str = ""
     is_team_only: bool = False
+    is_base_only: bool = False
     repo_archived: bool = False
     teams: tuple[str, ...] = ()
     last_commit_at: datetime | None = None
@@ -224,6 +266,7 @@ class MemberScore:
         """What a reviewer would actually have to do to act on this."""
         return remediation_note(
             is_team_only=self.is_team_only,
+            is_base_only=self.is_base_only,
             teams=self.teams,
             is_archived=self.repo_archived,
         )
@@ -378,6 +421,9 @@ def score_member(
         flagged=False,                       # decided by assess_repo
         access_label=member.access_label,
         is_team_only=member.is_team and not (member.is_direct or member.is_outside),
+        is_base_only=member.is_base and not (
+            member.is_direct or member.is_outside or member.is_team
+        ),
         repo_archived=repo_archived,
         teams=member.teams,
         last_commit_at=member.last_commit_at,
@@ -422,6 +468,13 @@ def assess_repo(
         blocked = member_exclusion(member, org_owners=org_owners, allowlist=allowlist)
         if blocked:
             scored.excluded_reason, scored.excluded_detail = blocked
+        elif not member.has_access:
+            scored.excluded_reason = ExclusionReason.NO_ACCESS
+            scored.excluded_detail = (
+                "Appears in this repository's history but holds no direct, "
+                "outside, team or organization-base access today, so there is "
+                "no grant to remove."
+            )
         elif repo_block:
             scored.excluded_reason, scored.excluded_detail = repo_block
 

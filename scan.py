@@ -175,6 +175,33 @@ def fetch_repos(gh: GitHubClient, org: str) -> list[RepoRecord]:
 # Organization members and owners
 # --------------------------------------------------------------------------
 
+def fetch_org_profile(gh: GitHubClient, org: str) -> dict[str, Any]:
+    """Org-level settings that change how access is interpreted.
+
+    `default_repository_permission` is the one that matters. When it is
+    anything other than "none", every organization member holds that permission
+    on every repository without any team or repo grant existing. Without
+    reading it, those people look like team-inherited access and get the wrong
+    remediation advice - which is exactly what happened the first time this was
+    pointed at a real organization.
+    """
+    try:
+        data = gh.get(f"/orgs/{org}").data or {}
+    except GitHubError as exc:
+        log.warning("Could not read org settings (%s); base-permission access "
+                    "will be reported as team-inherited", exc)
+        return {}
+
+    base = data.get("default_repository_permission")
+    if base and str(base).lower() != "none":
+        log.info("Org base permission is %r: every member holds %s on every repo",
+                 base, base)
+    return {
+        "default_repository_permission": base,
+        "two_factor_requirement_enabled": data.get("two_factor_requirement_enabled"),
+    }
+
+
 def fetch_org_members(gh: GitHubClient, db: Database, run_id: int, org: str) -> set[str]:
     """Record org members and return the set of owner logins (lowercased).
 
@@ -214,6 +241,14 @@ def fetch_org_members(gh: GitHubClient, db: Database, run_id: int, org: str) -> 
 
     log.info("Org %s has %d owner(s)", org, len(owners))
     return owners
+
+
+def all_org_members(db: Database) -> set[str]:
+    """Every recorded org member, lowercased. Used to attribute base permission."""
+    return {
+        str(row["login"]).lower()
+        for row in db.query("SELECT login FROM org_members")
+    }
 
 
 # --------------------------------------------------------------------------

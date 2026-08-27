@@ -28,8 +28,10 @@ from client import GitHubClient, GitHubError, RateLimitError
 from contrib import AccessEntry, collect_repo, fetch_last_commit_ever, fetch_org_teams
 from db import Database, RunStatus, Stage
 from scan import (
+    all_org_members,
     collect_advisories,
     fetch_org_members,
+    fetch_org_profile,
     fetch_repos,
     parse_ts,
     register_repos,
@@ -64,6 +66,7 @@ def member_input_from_row(row: Any) -> MemberInput:
     entry.direct = row["permission_direct"]
     entry.outside = row["permission_outside"]
     entry.team = row["permission_team"]
+    entry.base = row["permission_base"]
     if row["team_names"]:
         entry.teams = [t.strip() for t in str(row["team_names"]).split(",") if t.strip()]
 
@@ -82,6 +85,7 @@ def member_input_from_row(row: Any) -> MemberInput:
         is_direct=bool(row["is_direct"]),
         is_outside=bool(row["is_outside"]),
         is_team=bool(row["is_team"]),
+        is_base=bool(row["is_base"]),
         teams=tuple(entry.teams),
         access_label=entry.access_label,
     )
@@ -206,6 +210,8 @@ def run_live(args: argparse.Namespace, db: Database) -> tuple[int, dict[str, Any
                  quota["graphql_remaining"], quota["graphql_limit"])
 
         owners = fetch_org_members(gh, db, run_id, org)
+        profile = fetch_org_profile(gh, org)
+        members = all_org_members(db)
         repos = fetch_repos(gh, org)
         if not repos:
             log.error(
@@ -232,7 +238,11 @@ def run_live(args: argparse.Namespace, db: Database) -> tuple[int, dict[str, Any
                 continue
             log.info("[%d/%d] %s", index, len(to_scan), record.full_name)
             try:
-                collect_repo(gh, db, run_id, record, team_index, since=since)
+                collect_repo(
+                    gh, db, run_id, record, team_index, since=since,
+                    org_base_permission=profile.get("default_repository_permission"),
+                    org_members=members,
+                )
             except RateLimitError:
                 raise
             except GitHubError as exc:
