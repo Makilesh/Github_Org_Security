@@ -125,7 +125,9 @@
     @page { margin: 12mm; }
 
     body { background: #fff; font-size: 11px; }
-    .wrap { max-width: none; padding: 0; }
+    /* Keep a little gutter: with padding:0 the header title sits flush
+       against the edge of its coloured band and reads as clipped. */
+    .wrap { max-width: none; padding: 0 5mm; }
 
     /* Every repository section opens, whether or not it was expanded. */
     details.repo { break-inside: auto; border-color: #ccc; }
@@ -158,7 +160,7 @@
   <div class="wrap">
     <h1>VoidAlgo — security &amp; access hygiene</h1>
     <div class="meta">
-      Generated 27 Aug 2026, 19:55 UTC ·
+      Generated 28 Aug 2026, 07:40 UTC ·
       Activity window: last 180 days ·
       7 repositories scanned ·
       Run #1
@@ -172,28 +174,26 @@
   <div class="card bottom-line">
     <strong>The short version</strong>
     <ul>
-      <li><strong>15 critical or high severity vulnerabilities are still open</strong>
-          across 1 repository.
-The oldest has been open for 0 days.      </li>
+      <li>No critical or high severity vulnerabilities are currently open.</li>
 
       <li><strong>2 access grants look stale</strong>
 — 1 of them at <strong>admin</strong> level.
           These are suggestions for human review; nothing has been changed.
       </li>
 
-      <li>4 people were assessed across 7 repositories.
-          19 access grants were deliberately held back from
+      <li>5 people were assessed across 7 repositories.
+          20 access grants were deliberately held back from
           the suggestions — org owners, bots, allowlisted accounts, and repositories too new or too
           small to judge fairly. All of them are listed in section 4.</li>
     </ul>
   </div>
 
   <div class="kpis">
-    <div class="kpi alarm">
-      <div class="v">15</div><div class="l">Critical + high, open</div>
+    <div class="kpi calm">
+      <div class="v">0</div><div class="l">Critical + high, open</div>
     </div>
-    <div class="kpi warn">
-      <div class="v">32</div><div class="l">Open advisories, all severities</div>
+    <div class="kpi calm">
+      <div class="v">0</div><div class="l">Open advisories, all severities</div>
     </div>
     <div class="kpi warn">
       <div class="v">2</div><div class="l">Suggested access removals</div>
@@ -202,7 +202,7 @@ The oldest has been open for 0 days.      </li>
       <div class="v">1</div><div class="l">Of those, admin access</div>
     </div>
     <div class="kpi"><div class="v">7</div><div class="l">Repositories scanned</div></div>
-    <div class="kpi"><div class="v">4</div><div class="l">People assessed</div></div>
+    <div class="kpi"><div class="v">5</div><div class="l">People assessed</div></div>
   </div>
 
   <!-- ============================ 1. ADVISORIES ============================ -->
@@ -215,31 +215,32 @@ The oldest has been open for 0 days.      </li>
   <div class="grid-3">
     <div class="card">
       <h3 style="margin-top:0">Open alerts by severity</h3>
-<div class="chartbox"><canvas id="sevChart"></canvas></div>      <table style="margin-top:10px">
+      <p class="muted" style="margin:14px 0 4px">Nothing open. Any alerts the organization has had are shown as fixed or dismissed below.</p>
+      <table style="margin-top:10px">
         <thead><tr><th>Severity</th><th class="num">Open</th><th class="num">Fixed</th><th class="num">Dismissed</th></tr></thead>
         <tbody>
           <tr>
             <td><span class="pill critical">Critical</span></td>
-            <td class="num"><strong>1</strong></td>
-            <td class="num muted">0</td>
+            <td class="num"><strong>0</strong></td>
+            <td class="num muted">1</td>
             <td class="num muted">0</td>
           </tr>
           <tr>
             <td><span class="pill high">High</span></td>
-            <td class="num"><strong>14</strong></td>
-            <td class="num muted">0</td>
+            <td class="num"><strong>0</strong></td>
+            <td class="num muted">14</td>
             <td class="num muted">0</td>
           </tr>
           <tr>
             <td><span class="pill medium">Medium</span></td>
-            <td class="num"><strong>11</strong></td>
-            <td class="num muted">0</td>
+            <td class="num"><strong>0</strong></td>
+            <td class="num muted">11</td>
             <td class="num muted">0</td>
           </tr>
           <tr>
             <td><span class="pill low">Low</span></td>
-            <td class="num"><strong>6</strong></td>
-            <td class="num muted">0</td>
+            <td class="num"><strong>0</strong></td>
+            <td class="num muted">6</td>
             <td class="num muted">0</td>
           </tr>
         </tbody>
@@ -255,93 +256,13 @@ The oldest has been open for 0 days.      </li>
 
     <div class="card">
       <h3 style="margin-top:0">Most affected repositories</h3>
-<div class="chartbox"><canvas id="repoChart"></canvas></div>    </div>
+<p class="muted">No repository has open alerts.</p>    </div>
   </div>
 
   <div class="card">
     <h3 style="margin-top:0">Oldest unresolved alerts</h3>
     <p class="lede" style="margin-bottom:10px">Sorted by how long they have been open. These are the ones that have been ignored the longest.</p>
-    <div class="scroll">
-    <table>
-      <thead>
-        <tr><th>Age</th><th>Severity</th><th>Package</th><th>Repository</th><th>Advisory</th><th>Summary</th></tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td class="num mono"><strong>0d</strong></td>
-          <td><span class="pill low">Low</span></td>
-          <td><code>torch</code> <span class="muted">pip</span></td>
-          <td><a href="https://github.com/VoidAlgo/Sensitive_Data_Detection-Compliance_Assistant">VoidAlgo/Sensitive_Data_Detection-Compliance_Assistant</a></td>
-          <td class="mono" style="font-size:12px">
-            <a href="https://github.com/VoidAlgo/Sensitive_Data_Detection-Compliance_Assistant/security/dependabot/1">GHSA-3749-ghw9-m3mg</a><br><span class="muted">CVE-2025-2953</span>          </td>
-          <td class="why">PyTorch susceptible to local Denial of Service</td>
-        </tr>
-        <tr>
-          <td class="num mono"><strong>0d</strong></td>
-          <td><span class="pill high">High</span></td>
-          <td><code>black</code> <span class="muted">pip</span></td>
-          <td><a href="https://github.com/VoidAlgo/Sensitive_Data_Detection-Compliance_Assistant">VoidAlgo/Sensitive_Data_Detection-Compliance_Assistant</a></td>
-          <td class="mono" style="font-size:12px">
-            <a href="https://github.com/VoidAlgo/Sensitive_Data_Detection-Compliance_Assistant/security/dependabot/32">GHSA-3936-cmfr-pm3m</a><br><span class="muted">CVE-2026-32274</span>          </td>
-          <td class="why">Black: Arbitrary file writes from unsanitized user input in cache file name</td>
-        </tr>
-        <tr>
-          <td class="num mono"><strong>0d</strong></td>
-          <td><span class="pill high">High</span></td>
-          <td><code>pillow</code> <span class="muted">pip</span></td>
-          <td><a href="https://github.com/VoidAlgo/Sensitive_Data_Detection-Compliance_Assistant">VoidAlgo/Sensitive_Data_Detection-Compliance_Assistant</a></td>
-          <td class="mono" style="font-size:12px">
-            <a href="https://github.com/VoidAlgo/Sensitive_Data_Detection-Compliance_Assistant/security/dependabot/23">GHSA-45hq-cxwh-f6vc</a><br><span class="muted">CVE-2026-55379</span>          </td>
-          <td class="why">Pillow `BdfFontFile`: `Image.new()` called without `_decompression_bomb_check()` — bomb protection bypass via font loading</td>
-        </tr>
-        <tr>
-          <td class="num mono"><strong>0d</strong></td>
-          <td><span class="pill medium">Medium</span></td>
-          <td><code>Pillow</code> <span class="muted">pip</span></td>
-          <td><a href="https://github.com/VoidAlgo/Sensitive_Data_Detection-Compliance_Assistant">VoidAlgo/Sensitive_Data_Detection-Compliance_Assistant</a></td>
-          <td class="mono" style="font-size:12px">
-            <a href="https://github.com/VoidAlgo/Sensitive_Data_Detection-Compliance_Assistant/security/dependabot/25">GHSA-4x4j-2g7c-83w6</a><br><span class="muted">CVE-2026-55798</span>          </td>
-          <td class="why">Pillow: WindowsViewer.get_command() OS command injection via unescaped shell path</td>
-        </tr>
-        <tr>
-          <td class="num mono"><strong>0d</strong></td>
-          <td><span class="pill critical">Critical</span></td>
-          <td><code>torch</code> <span class="muted">pip</span></td>
-          <td><a href="https://github.com/VoidAlgo/Sensitive_Data_Detection-Compliance_Assistant">VoidAlgo/Sensitive_Data_Detection-Compliance_Assistant</a></td>
-          <td class="mono" style="font-size:12px">
-            <a href="https://github.com/VoidAlgo/Sensitive_Data_Detection-Compliance_Assistant/security/dependabot/3">GHSA-53q9-r3pm-6pq6</a><br><span class="muted">CVE-2025-32434</span>          </td>
-          <td class="why">PyTorch: `torch.load` with `weights_only=True` leads to remote code execution</td>
-        </tr>
-        <tr>
-          <td class="num mono"><strong>0d</strong></td>
-          <td><span class="pill medium">Medium</span></td>
-          <td><code>Markdown</code> <span class="muted">pip</span></td>
-          <td><a href="https://github.com/VoidAlgo/Sensitive_Data_Detection-Compliance_Assistant">VoidAlgo/Sensitive_Data_Detection-Compliance_Assistant</a></td>
-          <td class="mono" style="font-size:12px">
-            <a href="https://github.com/VoidAlgo/Sensitive_Data_Detection-Compliance_Assistant/security/dependabot/5">GHSA-5wmx-573v-2qwq</a><br><span class="muted">CVE-2025-69534</span>          </td>
-          <td class="why">Python-Markdown has an Uncaught Exception</td>
-        </tr>
-        <tr>
-          <td class="num mono"><strong>0d</strong></td>
-          <td><span class="pill high">High</span></td>
-          <td><code>pillow</code> <span class="muted">pip</span></td>
-          <td><a href="https://github.com/VoidAlgo/Sensitive_Data_Detection-Compliance_Assistant">VoidAlgo/Sensitive_Data_Detection-Compliance_Assistant</a></td>
-          <td class="mono" style="font-size:12px">
-            <a href="https://github.com/VoidAlgo/Sensitive_Data_Detection-Compliance_Assistant/security/dependabot/22">GHSA-5x94-69rx-g8h2</a><br><span class="muted">CVE-2026-54060</span>          </td>
-          <td class="why">Pillow: `FontFile.compile()`: `Image.new()` called without `_decompression_bomb_check()`</td>
-        </tr>
-        <tr>
-          <td class="num mono"><strong>0d</strong></td>
-          <td><span class="pill high">High</span></td>
-          <td><code>pillow</code> <span class="muted">pip</span></td>
-          <td><a href="https://github.com/VoidAlgo/Sensitive_Data_Detection-Compliance_Assistant">VoidAlgo/Sensitive_Data_Detection-Compliance_Assistant</a></td>
-          <td class="mono" style="font-size:12px">
-            <a href="https://github.com/VoidAlgo/Sensitive_Data_Detection-Compliance_Assistant/security/dependabot/20">GHSA-62p4-gmf7-7g93</a><br><span class="muted">CVE-2026-54058</span>          </td>
-          <td class="why">Pillow: Out-of-bounds read via attacker-controlled row stride on Pillow's mmap path (McIdas AREA files)</td>
-        </tr>
-      </tbody>
-    </table>
-    </div>
+    <p class="muted">Nothing unresolved.</p>
   </div>
 
   <!-- ========================= 2. PER-REPO MEMBERS ========================= -->
@@ -505,101 +426,6 @@ The oldest has been open for 0 days.      </li>
   </details>
   <details class="repo" >
     <summary>
-      <span class="rname">Sensitive_Data_Detection-Compliance_Assistant</span>
-      <span class="spacer"></span>
-<span class="tag flag">32 open alerts</span>        <span class="tag ok">access looks current</span>
-      <span class="muted" style="font-size:12.5px">4 with access</span>
-    </summary>
-    <div class="body">
-      <div class="blocked">
-        <strong>No removal suggestions for this repository.</strong>
-        Created 0 days ago, inside the 180-day window. Nobody has had time to build a history here yet.
-      </div>
-      <p class="muted" style="font-size:12.5px;margin:0 0 10px">
-        Created 27 Aug 2026 · last push 27 Aug 2026 ·
-        17 commits in window from 2 identified contributors
- · <a href="https://github.com/VoidAlgo/Sensitive_Data_Detection-Compliance_Assistant">open on GitHub</a>      </p>
-      <div class="scroll">
-      <table>
-        <thead>
-          <tr>
-            <th>Member</th><th>How they have access</th>
-            <th class="num">Commits</th><th class="num">PRs reviewed</th><th class="num">PRs merged</th>
-            <th>Last activity</th><th class="num">Score</th><th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><strong>Makilesh</strong></td>
-            <td style="font-size:12.5px">
-              Organization owner (Admin)
-            </td>
-            <td class="num mono">16</td>
-            <td class="num mono">0</td>
-            <td class="num mono">1</td>
-            <td class="mono" style="font-size:12.5px">
-              27 Aug 2026 (0 days ago)
-            </td>
-            <td class="num mono"><strong>10.58</strong></td>
-            <td>
-                <span class="tag">excluded — Organization owner</span>
-            </td>
-          </tr>
-          <tr>
-            <td><strong>Copilot</strong></td>
-            <td style="font-size:12.5px">
-              No current access
-            </td>
-            <td class="num mono">1</td>
-            <td class="num mono">0</td>
-            <td class="num mono">0</td>
-            <td class="mono" style="font-size:12.5px">
-              27 Aug 2026 (0 days ago)
-            </td>
-            <td class="num mono"><strong>2.08</strong></td>
-            <td>
-                <span class="tag">excluded — Contributed here, but holds no current access - nothing to remove</span>
-            </td>
-          </tr>
-          <tr>
-            <td><strong>clashonkishy</strong></td>
-            <td style="font-size:12.5px">
-              Organization owner (Admin)
-            </td>
-            <td class="num mono">0</td>
-            <td class="num mono">0</td>
-            <td class="num mono">0</td>
-            <td class="mono" style="font-size:12.5px">
-              never
-            </td>
-            <td class="num mono"><strong>0.00</strong></td>
-            <td>
-                <span class="tag">excluded — Organization owner</span>
-            </td>
-          </tr>
-          <tr>
-            <td><strong>fatbatman85</strong></td>
-            <td style="font-size:12.5px">
-              Org base permission (Read)
-            </td>
-            <td class="num mono">0</td>
-            <td class="num mono">0</td>
-            <td class="num mono">0</td>
-            <td class="mono" style="font-size:12.5px">
-              never
-            </td>
-            <td class="num mono"><strong>0.00</strong></td>
-            <td>
-                <span class="tag">excluded — Repository created within the last 180 days</span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      </div>
-    </div>
-  </details>
-  <details class="repo" >
-    <summary>
       <span class="rname">Auto_Job_Applying_Agent</span>
       <span class="spacer"></span>
         <span class="tag ok">access looks current</span>
@@ -631,7 +457,7 @@ The oldest has been open for 0 days.      </li>
             <td class="mono" style="font-size:12.5px">
               27 Aug 2026 (0 days ago)
             </td>
-            <td class="num mono"><strong>5.37</strong></td>
+            <td class="num mono"><strong>5.36</strong></td>
             <td>
                 <span class="tag ok">active</span>
             </td>
@@ -675,6 +501,117 @@ The oldest has been open for 0 days.      </li>
   </details>
   <details class="repo" >
     <summary>
+      <span class="rname">Sensitive_Data_Detection-Compliance_Assistant</span>
+      <span class="spacer"></span>
+        <span class="tag ok">access looks current</span>
+      <span class="muted" style="font-size:12.5px">5 with access</span>
+    </summary>
+    <div class="body">
+      <div class="blocked">
+        <strong>No removal suggestions for this repository.</strong>
+        Created 1 days ago, inside the 180-day window. Nobody has had time to build a history here yet.
+      </div>
+      <p class="muted" style="font-size:12.5px;margin:0 0 10px">
+        Created 27 Aug 2026 · last push 28 Aug 2026 ·
+        20 commits in window from 3 identified contributors
+ · <a href="https://github.com/VoidAlgo/Sensitive_Data_Detection-Compliance_Assistant">open on GitHub</a>      </p>
+      <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Member</th><th>How they have access</th>
+            <th class="num">Commits</th><th class="num">PRs reviewed</th><th class="num">PRs merged</th>
+            <th>Last activity</th><th class="num">Score</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Makilesh</strong></td>
+            <td style="font-size:12.5px">
+              Organization owner (Admin)
+            </td>
+            <td class="num mono">18</td>
+            <td class="num mono">0</td>
+            <td class="num mono">1</td>
+            <td class="mono" style="font-size:12.5px">
+              28 Aug 2026 (0 days ago)
+            </td>
+            <td class="num mono"><strong>10.91</strong></td>
+            <td>
+                <span class="tag">excluded — Organization owner</span>
+            </td>
+          </tr>
+          <tr>
+            <td><strong>dependabot[bot]</strong></td>
+            <td style="font-size:12.5px">
+              No current access
+            </td>
+            <td class="num mono">1</td>
+            <td class="num mono">0</td>
+            <td class="num mono">0</td>
+            <td class="mono" style="font-size:12.5px">
+              27 Aug 2026 (0 days ago)
+            </td>
+            <td class="num mono"><strong>2.07</strong></td>
+            <td>
+                <span class="tag">excluded — Bot or app account</span>
+            </td>
+          </tr>
+          <tr>
+            <td><strong>Copilot</strong></td>
+            <td style="font-size:12.5px">
+              No current access
+            </td>
+            <td class="num mono">1</td>
+            <td class="num mono">0</td>
+            <td class="num mono">0</td>
+            <td class="mono" style="font-size:12.5px">
+              27 Aug 2026 (0 days ago)
+            </td>
+            <td class="num mono"><strong>2.07</strong></td>
+            <td>
+                <span class="tag">excluded — Contributed here, but holds no current access - nothing to remove</span>
+            </td>
+          </tr>
+          <tr>
+            <td><strong>clashonkishy</strong></td>
+            <td style="font-size:12.5px">
+              Organization owner (Admin)
+            </td>
+            <td class="num mono">0</td>
+            <td class="num mono">0</td>
+            <td class="num mono">0</td>
+            <td class="mono" style="font-size:12.5px">
+              never
+            </td>
+            <td class="num mono"><strong>0.00</strong></td>
+            <td>
+                <span class="tag">excluded — Organization owner</span>
+            </td>
+          </tr>
+          <tr>
+            <td><strong>fatbatman85</strong></td>
+            <td style="font-size:12.5px">
+              Org base permission (Read)
+            </td>
+            <td class="num mono">0</td>
+            <td class="num mono">0</td>
+            <td class="num mono">0</td>
+            <td class="mono" style="font-size:12.5px">
+              never
+            </td>
+            <td class="num mono"><strong>0.00</strong></td>
+            <td>
+                <span class="tag">excluded — Repository created within the last 180 days</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+  </details>
+  <details class="repo" >
+    <summary>
       <span class="rname">demo-repository</span>
 <span class="tag private">private</span>      <span class="spacer"></span>
         <span class="tag ok">access looks current</span>
@@ -683,7 +620,7 @@ The oldest has been open for 0 days.      </li>
     <div class="body">
       <div class="blocked">
         <strong>No removal suggestions for this repository.</strong>
-        Created 33 days ago, inside the 180-day window. Nobody has had time to build a history here yet.
+        Created 34 days ago, inside the 180-day window. Nobody has had time to build a history here yet.
       </div>
       <p class="muted" style="font-size:12.5px;margin:0 0 10px">
         Created 25 Jul 2026 · last push 25 Jul 2026 ·
@@ -762,7 +699,7 @@ The oldest has been open for 0 days.      </li>
     <div class="body">
       <div class="blocked">
         <strong>No removal suggestions for this repository.</strong>
-        Created 0 days ago, inside the 180-day window. Nobody has had time to build a history here yet.
+        Created 1 days ago, inside the 180-day window. Nobody has had time to build a history here yet.
       </div>
       <p class="muted" style="font-size:12.5px;margin:0 0 10px">
         Created 27 Aug 2026 · last push 27 Aug 2026 ·
@@ -789,7 +726,7 @@ The oldest has been open for 0 days.      </li>
             <td class="mono" style="font-size:12.5px">
               27 Aug 2026 (0 days ago)
             </td>
-            <td class="num mono"><strong>9.88</strong></td>
+            <td class="num mono"><strong>9.87</strong></td>
             <td>
                 <span class="tag">excluded — Organization owner</span>
             </td>
@@ -841,7 +778,7 @@ The oldest has been open for 0 days.      </li>
     <div class="body">
       <div class="blocked">
         <strong>No removal suggestions for this repository.</strong>
-        Created 33 days ago, inside the 180-day window. Nobody has had time to build a history here yet.
+        Created 34 days ago, inside the 180-day window. Nobody has had time to build a history here yet.
       </div>
       <p class="muted" style="font-size:12.5px;margin:0 0 10px">
         Created 25 Jul 2026 · last push 16 Aug 2026 ·
@@ -868,9 +805,9 @@ The oldest has been open for 0 days.      </li>
             <td class="num mono">8</td>
             <td class="num mono">22</td>
             <td class="mono" style="font-size:12.5px">
-              16 Aug 2026 (11 days ago)
+              16 Aug 2026 (12 days ago)
             </td>
-            <td class="num mono"><strong>29.37</strong></td>
+            <td class="num mono"><strong>29.31</strong></td>
             <td>
                 <span class="tag">excluded — Organization owner</span>
             </td>
@@ -886,7 +823,7 @@ The oldest has been open for 0 days.      </li>
             <td class="mono" style="font-size:12.5px">
               27 Jul 2026 (31 days ago)
             </td>
-            <td class="num mono"><strong>15.82</strong></td>
+            <td class="num mono"><strong>15.79</strong></td>
             <td>
                 <span class="tag">excluded — Organization owner</span>
             </td>
@@ -950,7 +887,7 @@ The oldest has been open for 0 days.      </li>
           <td>
             <div class="riskbar">
               <div class="track"><div class="fill" style="width: 100%"></div></div>
-              <span class="mono" style="font-size:12px">0.97</span>
+              <span class="mono" style="font-size:12px">0.98</span>
             </div>
           </td>
           <td class="why">Holds admin access but has contributed only 1 commit, 0 PRs reviewed, 0 PRs merged in the last 180 days. Score 2.08 is below the 5.0 threshold.</td>
@@ -994,7 +931,19 @@ The oldest has been open for 0 days.      </li>
 
   <div class="grid-2">
     <div class="card">
-      <h3 style="margin-top:0">People never suggested for removal (19)</h3>
+      <h3 style="margin-top:0">People never suggested for removal (20)</h3>
+        <div class="excl-group">
+          <h4>Bot or app account <span class="muted">(1)</span></h4>
+          <table>
+            <tbody>
+              <tr>
+                <td><strong>dependabot[bot]</strong></td>
+                <td class="muted">VoidAlgo/Sensitive_Data_Detection-Compliance_Assistant</td>
+                <td></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <div class="excl-group">
           <h4>Contributed here, but holds no current access - nothing to remove <span class="muted">(1)</span></h4>
           <table>
@@ -1119,10 +1068,10 @@ The oldest has been open for 0 days.      </li>
           <h4>Repository created within the last 180 days <span class="muted">(4)</span></h4>
           <table>
             <tbody>
-              <tr><td><strong>Sensitive_Data_Detection-Compliance_Assistant</strong></td><td class="muted why">Created 0 days ago, inside the 180-day window. Nobody has had time to build a history here yet.</td></tr>
-              <tr><td><strong>demo-repository</strong></td><td class="muted why">Created 33 days ago, inside the 180-day window. Nobody has had time to build a history here yet.</td></tr>
-              <tr><td><strong>github_pull_toslack</strong></td><td class="muted why">Created 0 days ago, inside the 180-day window. Nobody has had time to build a history here yet.</td></tr>
-              <tr><td><strong>pseudoquant</strong></td><td class="muted why">Created 33 days ago, inside the 180-day window. Nobody has had time to build a history here yet.</td></tr>
+              <tr><td><strong>Sensitive_Data_Detection-Compliance_Assistant</strong></td><td class="muted why">Created 1 days ago, inside the 180-day window. Nobody has had time to build a history here yet.</td></tr>
+              <tr><td><strong>demo-repository</strong></td><td class="muted why">Created 34 days ago, inside the 180-day window. Nobody has had time to build a history here yet.</td></tr>
+              <tr><td><strong>github_pull_toslack</strong></td><td class="muted why">Created 1 days ago, inside the 180-day window. Nobody has had time to build a history here yet.</td></tr>
+              <tr><td><strong>pseudoquant</strong></td><td class="muted why">Created 34 days ago, inside the 180-day window. Nobody has had time to build a history here yet.</td></tr>
             </tbody>
           </table>
         </div>
@@ -1145,7 +1094,7 @@ The oldest has been open for 0 days.      </li>
       Flagged below 5.0.
     </p>
     <p>
-      Run #1 · started 2026-08-27T19:55:48+00:00 · database keyed on GitHub IDs, so re-running
+      Run #1 · started 2026-08-28T07:40:53+00:00 · database keyed on GitHub IDs, so re-running
       updates this report in place rather than duplicating it. Access removal is always a suggestion,
       never an automatic action.
     </p>
@@ -1175,15 +1124,24 @@ The oldest has been open for 0 days.      </li>
 </script>
 <script>
 (function () {
+  // No animation. This is a static report, so the motion buys nothing - and it
+  // actively breaks PDF export: headless Chrome advances virtual time faster
+  // than requestAnimationFrame progresses, so a chart captured mid-animation
+  // rasterises as a half-drawn arc.
+  Chart.defaults.animation = false;
+  Chart.defaults.animations = false;
+  Chart.defaults.transitions.active.animation.duration = 0;
+
   const grid = { color: "#eef0f4" };
   const tick = { color: "#78808f", font: { size: 11 } };
 
-  new Chart(document.getElementById("sevChart"), {
+  const sevEl = document.getElementById("sevChart");
+  if (sevEl) new Chart(sevEl, {
     type: "doughnut",
     data: {
       labels: ["Critical", "High", "Medium", "Low"],
       datasets: [{
-        data: [1, 14, 11, 6],
+        data: [0, 0, 0, 0],
         backgroundColor: ["#b3122b", "#d9480f", "#c98a00", "#2f6f8f"],
         borderWidth: 0
       }]
@@ -1194,10 +1152,11 @@ The oldest has been open for 0 days.      </li>
     }
   });
 
-  new Chart(document.getElementById("stateChart"), {
+  const stateEl = document.getElementById("stateChart");
+  if (stateEl) new Chart(stateEl, {
     type: "bar",
     data: {
-      labels: ["Open"],
+      labels: ["Fixed"],
       datasets: [{
         data: [32],
         backgroundColor: "#1f4e79", borderRadius: 4, maxBarThickness: 46
@@ -1211,11 +1170,12 @@ The oldest has been open for 0 days.      </li>
     }
   });
 
-  new Chart(document.getElementById("repoChart"), {
+  const repoEl = document.getElementById("repoChart");
+  if (repoEl) new Chart(repoEl, {
     type: "bar",
     data: {
-      labels: ["Sensitive_Data_Detection-Compliance_Assistant"],
-      datasets: [{"color": "#b3122b", "data": [1], "label": "Critical"}, {"color": "#d9480f", "data": [14], "label": "High"}, {"color": "#c98a00", "data": [11], "label": "Medium"}, {"color": "#2f6f8f", "data": [6], "label": "Low"}].map(s => ({
+      labels: [],
+      datasets: [{"color": "#b3122b", "data": [], "label": "Critical"}, {"color": "#d9480f", "data": [], "label": "High"}, {"color": "#c98a00", "data": [], "label": "Medium"}, {"color": "#2f6f8f", "data": [], "label": "Low"}].map(s => ({
         label: s.label, data: s.data, backgroundColor: s.color, borderRadius: 3
       }))
     },

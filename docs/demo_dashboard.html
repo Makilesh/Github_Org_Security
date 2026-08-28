@@ -125,7 +125,9 @@
     @page { margin: 12mm; }
 
     body { background: #fff; font-size: 11px; }
-    .wrap { max-width: none; padding: 0; }
+    /* Keep a little gutter: with padding:0 the header title sits flush
+       against the edge of its coloured band and reads as clipped. */
+    .wrap { max-width: none; padding: 0 5mm; }
 
     /* Every repository section opens, whether or not it was expanded. */
     details.repo { break-inside: auto; border-color: #ccc; }
@@ -161,7 +163,7 @@
       Generated 25 Aug 2026, 12:00 UTC ·
       Activity window: last 180 days ·
       5 repositories scanned, 1 skipped ·
-      Run #2
+      Run #1
     </div>
   </div>
 </header>
@@ -215,7 +217,8 @@ The oldest has been open for 347 days.      </li>
   <div class="grid-3">
     <div class="card">
       <h3 style="margin-top:0">Open alerts by severity</h3>
-<div class="chartbox"><canvas id="sevChart"></canvas></div>      <table style="margin-top:10px">
+<div class="chartbox"><canvas id="sevChart"></canvas></div>
+      <table style="margin-top:10px">
         <thead><tr><th>Severity</th><th class="num">Open</th><th class="num">Fixed</th><th class="num">Dismissed</th></tr></thead>
         <tbody>
           <tr>
@@ -1312,7 +1315,7 @@ The oldest has been open for 347 days.      </li>
       Flagged below 5.0.
     </p>
     <p>
-      Run #2 · started 2026-08-27T19:55:48+00:00 · database keyed on GitHub IDs, so re-running
+      Run #1 · started 2026-08-28T07:40:52+00:00 · database keyed on GitHub IDs, so re-running
       updates this report in place rather than duplicating it. Access removal is always a suggestion,
       never an automatic action.
     </p>
@@ -1342,10 +1345,19 @@ The oldest has been open for 347 days.      </li>
 </script>
 <script>
 (function () {
+  // No animation. This is a static report, so the motion buys nothing - and it
+  // actively breaks PDF export: headless Chrome advances virtual time faster
+  // than requestAnimationFrame progresses, so a chart captured mid-animation
+  // rasterises as a half-drawn arc.
+  Chart.defaults.animation = false;
+  Chart.defaults.animations = false;
+  Chart.defaults.transitions.active.animation.duration = 0;
+
   const grid = { color: "#eef0f4" };
   const tick = { color: "#78808f", font: { size: 11 } };
 
-  new Chart(document.getElementById("sevChart"), {
+  const sevEl = document.getElementById("sevChart");
+  if (sevEl) new Chart(sevEl, {
     type: "doughnut",
     data: {
       labels: ["Critical", "High", "Medium", "Low"],
@@ -1361,7 +1373,8 @@ The oldest has been open for 347 days.      </li>
     }
   });
 
-  new Chart(document.getElementById("stateChart"), {
+  const stateEl = document.getElementById("stateChart");
+  if (stateEl) new Chart(stateEl, {
     type: "bar",
     data: {
       labels: ["Dismissed", "Fixed", "Open"],
@@ -1378,7 +1391,8 @@ The oldest has been open for 347 days.      </li>
     }
   });
 
-  new Chart(document.getElementById("repoChart"), {
+  const repoEl = document.getElementById("repoChart");
+  if (repoEl) new Chart(repoEl, {
     type: "bar",
     data: {
       labels: ["legacy-etl", "payments-api", "web-frontend"],

@@ -125,7 +125,9 @@
     @page { margin: 12mm; }
 
     body { background: #fff; font-size: 11px; }
-    .wrap { max-width: none; padding: 0; }
+    /* Keep a little gutter: with padding:0 the header title sits flush
+       against the edge of its coloured band and reads as clipped. */
+    .wrap { max-width: none; padding: 0 5mm; }
 
     /* Every repository section opens, whether or not it was expanded. */
     details.repo { break-inside: auto; border-color: #ccc; }
@@ -242,7 +244,10 @@
   <div class="grid-3">
     <div class="card">
       <h3 style="margin-top:0">Open alerts by severity</h3>
-      {% if chart_js %}<div class="chartbox"><canvas id="sevChart"></canvas></div>{% endif %}
+      {% if chart_js and advisories.total_open %}<div class="chartbox"><canvas id="sevChart"></canvas></div>
+      {% elif not advisories.total_open %}
+      <p class="muted" style="margin:14px 0 4px">Nothing open. Any alerts the organization has had are shown as fixed or dismissed below.</p>
+      {% endif %}
       <table style="margin-top:10px">
         <thead><tr><th>Severity</th><th class="num">Open</th><th class="num">Fixed</th><th class="num">Dismissed</th></tr></thead>
         <tbody>
@@ -261,7 +266,7 @@
 
     <div class="card">
       <h3 style="margin-top:0">Status of all alerts</h3>
-      {% if chart_js %}<div class="chartbox"><canvas id="stateChart"></canvas></div>{% endif %}
+      {% if chart_js and advisories.rows_total %}<div class="chartbox"><canvas id="stateChart"></canvas></div>{% endif %}
       <p class="muted" style="font-size:12.5px;margin:10px 0 0">
         {{ advisories.rows_total }} alerts total.
         {% if advisories.by_state.get('dismissed') or advisories.by_state.get('auto_dismissed') %}
@@ -272,7 +277,7 @@
 
     <div class="card">
       <h3 style="margin-top:0">Most affected repositories</h3>
-      {% if chart_js %}<div class="chartbox"><canvas id="repoChart"></canvas></div>{% endif %}
+      {% if chart_js and advisories.most_affected %}<div class="chartbox"><canvas id="repoChart"></canvas></div>{% endif %}
       {% if not advisories.most_affected %}<p class="muted">No repository has open alerts.</p>{% endif %}
     </div>
   </div>
@@ -532,10 +537,19 @@
 <script>{{ chart_js }}</script>
 <script>
 (function () {
+  // No animation. This is a static report, so the motion buys nothing - and it
+  // actively breaks PDF export: headless Chrome advances virtual time faster
+  // than requestAnimationFrame progresses, so a chart captured mid-animation
+  // rasterises as a half-drawn arc.
+  Chart.defaults.animation = false;
+  Chart.defaults.animations = false;
+  Chart.defaults.transitions.active.animation.duration = 0;
+
   const grid = { color: "#eef0f4" };
   const tick = { color: "#78808f", font: { size: 11 } };
 
-  new Chart(document.getElementById("sevChart"), {
+  const sevEl = document.getElementById("sevChart");
+  if (sevEl) new Chart(sevEl, {
     type: "doughnut",
     data: {
       labels: {{ advisories.chart_severity.labels|tojson }},
@@ -551,7 +565,8 @@
     }
   });
 
-  new Chart(document.getElementById("stateChart"), {
+  const stateEl = document.getElementById("stateChart");
+  if (stateEl) new Chart(stateEl, {
     type: "bar",
     data: {
       labels: {{ advisories.chart_state.labels|tojson }},
@@ -568,7 +583,8 @@
     }
   });
 
-  new Chart(document.getElementById("repoChart"), {
+  const repoEl = document.getElementById("repoChart");
+  if (repoEl) new Chart(repoEl, {
     type: "bar",
     data: {
       labels: {{ advisories.chart_repos.labels|tojson }},

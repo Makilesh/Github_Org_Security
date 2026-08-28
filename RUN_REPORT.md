@@ -387,43 +387,6 @@ flagged the active admin, or the owners, or the person whose read access comes
 from an org-wide setting, would be worse than useless — the reviewer would stop
 trusting the list on the first false positive.
 
-### The live dashboard
-
-The same four sections, rendered from the real organization. These are produced
-by `python tools/make_docs.py`, from the committed
-[docs/live/dashboard.html](docs/live/dashboard.html), so they cannot drift from
-what the scan actually produced. A printed copy is at
-[docs/pdf/live_dashboard.pdf](docs/pdf/live_dashboard.pdf).
-
-![Live headline summary and KPI tiles](docs/img/live-overview.png)
-
-Three sentences, then the numbers: 15 critical or high vulnerabilities open,
-2 stale access grants, 21 people-repository pairs assessed.
-
-![Live security advisories](docs/img/live-advisories.png)
-
-32 open alerts, all in one repository — real CVEs against `torch`, `pillow` and
-`black`. The "most affected repositories" chart collapses to a single bar,
-which is itself the finding.
-
-![Live per-repo member table](docs/img/live-access.png)
-
-Seven repositories, each expandable. Note `Auto_Job_Applying_Agent`: the same
-person who is flagged elsewhere holds **admin** here and is **not** flagged,
-because they actually contributed.
-
-![Live suggested removals](docs/img/live-suggestions.png)
-
-Two suggestions, ranked by risk, each carrying its evidence and its remediation.
-
-![Live exclusion panel](docs/img/live-exclusions.png)
-
-Nineteen grants held back, grouped by reason — organization owners, org base
-permission, contributors with no access, repositories too new or too small.
-This panel is what makes the two suggestions above believable.
-
----
-
 ### A limitation this run exposed
 
 `voice_mvp_dupe` was, before the commits above, a repository with **three
@@ -469,6 +432,54 @@ fact table unchanged. Idempotency and conditional caching confirmed against the
 real API, not against mocks.
 
 ## Step 9 — The findings were acted on
+
+### The live dashboard, after remediation
+
+These are the current state of the organization — scanned after the fix, so the
+advisory section reads **0 open, 32 fixed** rather than the 32 open of Step 8.
+Both are the same tool on the same org, a day apart, which is exactly what a
+weekly report is supposed to look like when someone acts on it.
+
+Produced by `python tools/make_docs.py` from the committed
+[docs/live/dashboard.html](docs/live/dashboard.html), so they cannot drift from
+what the scan actually produced. A printed copy is at
+[docs/pdf/live_dashboard.pdf](docs/pdf/live_dashboard.pdf).
+
+![Live headline summary and KPI tiles](docs/img/live-overview.png)
+
+Three sentences, then the numbers. Compare against Step 8's header, which read
+15 critical-or-high open: the advisory tiles are now zero and the access
+findings are unchanged, because the remediation touched dependencies, not
+permissions.
+
+![Live security advisories](docs/img/live-advisories.png)
+
+Zero open, and the severity table now shows 1 critical / 14 high / 11 medium /
+6 low under **fixed**. The chart is omitted rather than drawn empty. Step 8 has
+the same panel while those 32 were still open.
+
+![Live per-repo member table](docs/img/live-access.png)
+
+Seven repositories, each expandable. Note `Auto_Job_Applying_Agent`: the same
+person who is flagged elsewhere holds **admin** here and is **not** flagged,
+because they actually contributed.
+
+![Live suggested removals](docs/img/live-suggestions.png)
+
+Two suggestions, ranked by risk, each carrying its evidence and its remediation.
+
+![Live exclusion panel](docs/img/live-exclusions.png)
+
+Twenty grants held back, grouped by reason — organization owners, org base
+permission, contributors with no access, repositories too new or too small.
+This panel is what makes the two suggestions above believable. (Step 8's run
+held back nineteen; the extra one is a contributor who appeared on a repository
+between the two scans.)
+
+---
+
+---
+
 
 A scan that nobody acts on is a report, not a tool. The live run's advisory
 half found **32 open Dependabot alerts** concentrated in one repository, so the
