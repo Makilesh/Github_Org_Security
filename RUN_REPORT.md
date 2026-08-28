@@ -280,6 +280,11 @@ The fixture org above is the illustrative case. This is the same code against a
 real GitHub organization (`VoidAlgo`), and it is here because running against
 real data found four bugs that no fixture would have caught.
 
+**Scanned 27 August 2026.** Everything in this step is that snapshot, including
+the 32 open advisories. Step 9 records what was done about them afterwards, so
+the two steps' counts differ on purpose — that is the point of the exercise, not
+an inconsistency.
+
 ### Token permission probe
 
 Every endpoint the tool depends on, probed individually before scanning:
@@ -331,7 +336,7 @@ INFO  scanner: [7/7] VoidAlgo/voice_mvp_dupe
 ### Advisory findings
 
 **32 open Dependabot alerts, 15 of them critical or high**, all concentrated in
-a single repository:
+a single repository (all since fixed — see Step 9):
 
 | Severity | Open |
 | -------- | ---- |
