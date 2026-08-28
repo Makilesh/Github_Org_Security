@@ -41,6 +41,12 @@ Idempotent by construction: every table keyed on natural GitHub IDs with `INSERT
 
 Rate limits: pre-emptive pausing before the quota runs out, `Retry-After` honoured, and stored ETags so re-runs cost little. **Verified live** — the second run served 8 of 13 requests from 304s, which do not count against quota. A 100-repo org costs roughly 410 REST requests against a 5,000/hour budget, because advisories are fetched org-wide in one call rather than once per repo, and contributions use one GraphQL query per repo rather than one per member.
 
+### The findings were acted on
+
+The live scan's advisory half found 32 open Dependabot alerts — 1 critical, 14 high — all in one repository. They are now **all closed**, via seven version pins, verified by a full install and that project's own 148 tests.
+
+The interesting part is *why* they had accumulated: `pillow` was held at 10.4.0 by `streamlit 1.39`, which caps `pillow<11`. Seventeen of the thirty-two alerts were on that one package and none of them were individually fixable — the blocker was a different dependency entirely. A separate automated bump cleared 30 of 32 but stopped two short of what the advisories actually required, which checking resolved versions against each advisory's vulnerable range caught.
+
 ### Production-readiness
 
 The three things I would add next: an accept/reject feedback loop so the threshold is defensible with evidence rather than argument; tracking access *changes* between runs, since "granted admin last week, never used it" beats any snapshot; and async repo scanning, which is the obvious bottleneck past a few hundred repos.

@@ -463,6 +463,49 @@ count against the API quota. Row counts after two full runs: `runs 2`, every
 fact table unchanged. Idempotency and conditional caching confirmed against the
 real API, not against mocks.
 
+## Step 9 — The findings were acted on
+
+A scan that nobody acts on is a report, not a tool. The live run's advisory
+half found **32 open Dependabot alerts** concentrated in one repository, so the
+obvious next step was to fix them and re-run.
+
+| | Before | After |
+| --- | ------ | ----- |
+| Critical | 1 | 0 |
+| High | 14 | 0 |
+| Medium | 11 | 0 |
+| Low | 6 | 0 |
+| **Total open** | **32** | **0** |
+
+The fix was seven pinned versions in `requirements.txt`
+([VoidAlgo/Sensitive_Data_Detection-Compliance_Assistant@f98acbf](https://github.com/VoidAlgo/Sensitive_Data_Detection-Compliance_Assistant/commit/f98acbf)).
+
+Two details from doing it are worth recording, because they are the kind of
+thing the dashboard is supposed to make visible:
+
+**One package was pinned low by another package.** `pillow` sat at 10.4.0
+carrying the comment `# streamlit 1.39 requires pillow<11`. That single
+constraint is why **seventeen of the thirty-two alerts** had accumulated on one
+package: every Pillow advisory since was unfixable without first moving
+Streamlit. Bumping Pillow alone does not resolve. Streamlit 1.54 relaxes the cap
+to `pillow<13`, and only then does the Pillow fix become possible. A per-package
+view of advisories would have shown seventeen separate problems; the actual
+problem was one.
+
+**Automated bumps stopped two short.** A Dependabot PR merged mid-way through
+this work cleared 30 of the 32, but bumped `markdown` to 3.7 and `torch` to
+2.12.1 — while the advisories required `>= 3.8.1` and `>= 2.13.0` respectively.
+It also left the now-incorrect `pillow<11` comment in place. Checking the
+resulting versions against each advisory's own vulnerable range, rather than
+trusting that "Dependabot merged it" means "fixed", is what caught the gap.
+
+The upgrade was verified rather than assumed, because torch moved eleven minor
+versions and Streamlit fifteen: the full stack installs with no conflicts, every
+runtime import succeeds, **all 148 of that project's tests pass**, and all 29 of
+its `src` modules import.
+
+---
+
 ### What is mocked, stated plainly
 
 Only the GitHub API responses, and only in `--demo`. Private Dependabot
