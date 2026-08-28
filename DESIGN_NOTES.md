@@ -330,6 +330,26 @@ bound to the run's clock at render time.
 
 ---
 
+**8. Advisory counts were silently zeroed by a second writer.** Two stages
+write `repo_stats`: the advisory pass knows `open_advisories`, the contribution
+pass knows the commit counts, and neither knows the other's numbers. The upsert
+wrote every column, so whichever stage ran second reset the first one's work to
+its default. A repository with 32 stored advisories displayed **"0 open
+alerts"**. The upsert is now a partial update that touches only the columns it
+was given, with tests covering both the preserve case and a deliberate zero.
+
+**9. Charts printed as half-drawn arcs.** Found only by rendering the finished
+PDFs to images and looking at them — text extraction had passed, because the
+numbers live in the tables beside the charts. Chart.js animates on load, and
+headless Chrome advances virtual time faster than `requestAnimationFrame`
+progresses, so the canvas was flattened to PNG mid-animation. Animation is now
+off: this is a static report, so the motion bought nothing and cost
+correctness. The same pass found a chart with no data drawing an empty 240px
+box, and the header title sitting flush against the edge of its coloured band
+because the print stylesheet zeroed the page gutter.
+
+---
+
 ## 9. What I would change for production
 
 **Correctness and coverage**
@@ -472,7 +492,7 @@ producing this documentation.
 - **The ETag cache bug** (section 8, item 3) was in AI-drafted code and was
   caught by running the tests, not by reading them. It would have silently
   disabled caching on every fresh run.
-- **The wall-clock bug in the report filters** (section 8, item 5) was likewise
+- **The wall-clock bug in the report filters** (section 8, item 7) was likewise
   AI-drafted and caught by comparing two numbers on the rendered page that
   disagreed by one day.
 - **Three bugs were found only by pointing the tool at a real organization**,
@@ -482,10 +502,6 @@ producing this documentation.
   encode what I already believed was true. That is the argument for running
   against real data early, and it is why the run report keeps a live section
   even though the demo org is more illustrative.
-- **The silent-empty-access bug** (section 8, item 4) was only found by running
-  against a real token with incomplete permissions. No unit test would have
-  caught it, because the code did exactly what it was written to do — the
-  mistake was in deciding that a 403 was an acceptable empty result.
 - **The advisory primary key** was changed away from the specified `ghsa_id`
   after checking a real Dependabot payload and finding the multi-manifest case.
 - **The expected ranking in `tests/test_pipeline.py` was computed by hand** and
@@ -518,9 +534,26 @@ happy-path manual run never exercises, and the documentation errors were claims
 nobody had checked against the source.
 
 **The honest summary:** the assistant was substantially faster at producing
-correct-shaped code than I would have been alone, and produced three bugs that
-looked completely reasonable on the page. Two were caught by executing the tests
-against a mock transport; the third only surfaced when the tool was pointed at a
-real token with incomplete permissions. All three were in error-handling paths
-that never fire in a happy-path manual run. That is the argument for the test suite, and it
-is why I would not ship AI-drafted infrastructure code without one.
+correct-shaped code than I would have been alone, and it produced **nine
+defects that all looked completely reasonable on the page** — the nine in
+section 8. They fall into three groups, and the grouping is the actual lesson:
+
+- **Three were caught by tests** against a mock transport: the ETag cache
+  guard, the wall-clock date filters, and the `repo_stats` overwrite. All three
+  sat in paths a happy-path manual run never exercises.
+- **Three were caught only by pointing the tool at a real organization**: the
+  refused access listing reported as "nobody has access", organization base
+  permission mislabelled as a team grant, and contributors with no access being
+  suggested for removal. No fixture would have found these, because fixtures
+  encode what I already believed was true.
+- **One was caught only by looking at the output**: the charts printing as
+  half-drawn arcs. The tests passed, the text extracted, the numbers were
+  right, and the artefact was still wrong.
+
+The remaining two — the advisory primary key and the missing `last_commit_ever`
+— were design gaps I found while reading real API payloads rather than bugs in
+written code.
+
+I would not ship AI-drafted infrastructure code without a test suite, a run
+against real data, and a look at the finished artefact. Each layer caught a
+class of error the other two could not, and none of the three was redundant.
