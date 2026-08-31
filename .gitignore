@@ -1,7 +1,6 @@
 # --- Secrets -----------------------------------------------------------
 # The PAT lives here. Never commit it.
 .env
-.env.*
 !.env.example
 *.pem
 *.key
